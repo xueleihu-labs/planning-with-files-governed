@@ -212,7 +212,7 @@ def read_task_index(project_root: Path, *, require: bool = False) -> dict[str, s
 
     The file intentionally uses JSON syntax while retaining the `.yaml` name:
     it is valid YAML 1.2, human-readable, and needs no third-party parser on
-    Python 3.9/macOS/Windows/WSL.
+    Python 3.10/macOS/Windows/WSL.
     """
     path = task_index_path(project_root)
     if not path.exists():

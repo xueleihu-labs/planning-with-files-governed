@@ -1,6 +1,6 @@
 ---
 name: planning-with-files-governed
-version: 1.0.0
+version: 1.0.1
 description: >
   Governance-oriented, file-based planning and checkpoint system for AI coding agents.
   Provides immutable checkpoints, cross-platform handoff, L0-L3 governance profiles,

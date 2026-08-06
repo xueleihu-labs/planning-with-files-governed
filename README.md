@@ -1,4 +1,4 @@
-# planning-with-files-governed v1.0.0
+# planning-with-files-governed v1.0.1
 
 A governance-oriented, file-based planning and checkpoint system for AI coding agents — with immutable checkpoints, cross-platform handoff, and L0–L3 governance profiles.
 
@@ -95,7 +95,7 @@ files, compatibility impact, and validation evidence.
 
 ### Prerequisites
 
-- Python ≥ 3.9
+- Python ≥ 3.10
 - No external dependencies (standard library only)
 - Git (recommended for version control of plan files)
 
@@ -272,5 +272,5 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting and security guidelin
 
 **许可证：** MIT（双重版权：Copyright (c) 2026 Ahmad Adi + Copyright (c) 2026 xueleihu52-arch）
 
-**安装：** Python ≥ 3.9，无需外部依赖，克隆后即可使用。
+**安装：** Python ≥ 3.10，无需外部依赖，克隆后即可使用。
 

@@ -62,7 +62,7 @@ jobs:
 
       - name: Plan doctor on examples
         run: |
-          python scripts/plan-doctor.py --project-root examples/basic --task-id example-task || true
+          python scripts/plan-doctor.py doctor --planning-dir examples/basic --task-id example-task
         shell: bash
 
   # Quick job to summarize results

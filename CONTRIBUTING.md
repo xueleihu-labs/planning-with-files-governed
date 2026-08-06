@@ -8,7 +8,7 @@ Thank you for your interest in contributing! This document outlines the process 
 
 ### Prerequisites
 
-- Python ≥ 3.9
+- Python ≥ 3.10
 - Git
 - No external dependencies required
 

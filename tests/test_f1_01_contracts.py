@@ -202,7 +202,7 @@ class F101ContractTests(unittest.TestCase):
     def test_schema_and_workflow_versions_remain_independent(self) -> None:
         self.assertEqual(plan.PLAN_CONTRACT_SCHEMA_VERSION, 1)
         self.assertEqual(plan.WORKFLOW_SCHEMA_VERSION, 1)
-        self.assertEqual((ROOT / "VERSION").read_text(encoding="utf-8").strip(), "1.0.0")
+        self.assertEqual((ROOT / "VERSION").read_text(encoding="utf-8").strip(), "1.0.1")
 
     def test_state_ownership_is_explicit_and_not_a_second_registry(self) -> None:
         self.assertEqual(plan.state_owner("plan"), "planning-with-files")
