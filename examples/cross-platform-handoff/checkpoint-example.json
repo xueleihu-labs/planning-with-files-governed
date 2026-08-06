@@ -1,0 +1,39 @@
+{
+  "checkpoint_id": "cp-003",
+  "task_id": "shared-api-task",
+  "phase": "implementation",
+  "status": "in-progress",
+  "timestamp": "2026-08-06T14:30:00+08:00",
+  "device": "macOS-DeviceA",
+  "governance_level": "L2",
+  "predecessor": {
+    "checkpoint_id": "cp-002",
+    "hash": "4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e"
+  },
+  "attestation": {
+    "algorithm": "SHA-256",
+    "hash": "a3f5e8c1d2b4f6a8e0c2d4b6f8a0e2c4d6b8f0a2e4c6d8b0f2a4e6c8d0b2f4a6",
+    "verified": true,
+    "verified_at": "2026-08-06T14:30:01+08:00"
+  },
+  "plan_file": "task_plan.md",
+  "plan_file_hash": "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2",
+  "completed_phases": [
+    {
+      "phase": "design",
+      "status": "verified",
+      "checkpoint_id": "cp-001"
+    }
+  ],
+  "current_phase": {
+    "phase": "implementation",
+    "status": "in-progress",
+    "progress": "60%"
+  },
+  "handoff": {
+    "initiated": true,
+    "target_device": "Windows-DeviceB",
+    "write_lock_released": true,
+    "lock_released_at": "2026-08-06T14:30:02+08:00"
+  }
+}

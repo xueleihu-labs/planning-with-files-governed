@@ -1,0 +1,8 @@
+# Task Discovery Index
+# This file records task_id and relative path only.
+# It does NOT record phase, status, owner, or completion state.
+# <!-- 中文注释：本文件仅记录 task_id 和相对路径，不记录状态。 -->
+
+tasks:
+  - task_id: example-task
+    path: example-task/

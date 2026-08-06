@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planning-with-files/workflow-metadata.schema.json",
+  "type": "object",
+  "required": ["workflow_schema_version", "project_id", "checklist_version", "template", "modules", "current_phase", "overall_status", "owner_agent", "last_updated_at"],
+  "properties": {
+    "workflow_schema_version": {"const": 1},
+    "project_id": {"type": "string", "minLength": 1},
+    "checklist_version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "template": {"type": "object", "required": ["template_id", "template_version", "template_digest"]},
+    "modules": {"type": "array"},
+    "current_phase": {"type": "string"},
+    "overall_status": {"type": "string"},
+    "owner_agent": {"type": "string"},
+    "last_updated_at": {"type": "string", "format": "date-time"},
+    "recommended_next_task": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true
+}

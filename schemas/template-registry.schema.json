@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planning-with-files/template-registry.schema.json",
+  "type": "object",
+  "required": ["registry_schema_version", "templates", "modules"],
+  "properties": {
+    "registry_schema_version": {"const": 1},
+    "templates": {"type": "array"},
+    "modules": {"type": "array"}
+  },
+  "additionalProperties": true
+}

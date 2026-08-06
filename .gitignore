@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Test artifacts
+planning-demo/
+planning-test/
+*_test_tmp/
+_test_tmp/
+.cache/
+.cache-*/
+session-cache/
+planning-files-runtime/
+runtime-data/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/

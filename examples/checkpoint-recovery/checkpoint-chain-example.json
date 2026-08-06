@@ -1,0 +1,62 @@
+{
+  "chain_summary": {
+    "task_id": "database-migration-task",
+    "total_checkpoints": 2,
+    "genesis_checkpoint": "cp-001",
+    "latest_checkpoint": "cp-002",
+    "chain_verified": true,
+    "verified_at": "2026-08-06T15:00:00+08:00"
+  },
+  "checkpoints": [
+    {
+      "checkpoint_id": "cp-001",
+      "task_id": "database-migration-task",
+      "phase": "design",
+      "status": "completed",
+      "timestamp": "2026-08-06T10:00:00+08:00",
+      "device": "macOS-DeviceA",
+      "governance_level": "L2",
+      "predecessor": null,
+      "attestation": {
+        "algorithm": "SHA-256",
+        "hash": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+        "verified": true
+      },
+      "plan_file_hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+      "completed_phases": [],
+      "notes": "Genesis checkpoint. Design phase complete and reviewed."
+    },
+    {
+      "checkpoint_id": "cp-002",
+      "task_id": "database-migration-task",
+      "phase": "implementation",
+      "status": "in-progress",
+      "timestamp": "2026-08-06T12:00:00+08:00",
+      "device": "macOS-DeviceA",
+      "governance_level": "L2",
+      "predecessor": {
+        "checkpoint_id": "cp-001",
+        "hash": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+      },
+      "attestation": {
+        "algorithm": "SHA-256",
+        "hash": "3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c",
+        "verified": true
+      },
+      "plan_file_hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+      "completed_phases": [
+        {
+          "phase": "design",
+          "status": "verified",
+          "checkpoint_id": "cp-001"
+        }
+      ],
+      "current_phase": {
+        "phase": "implementation",
+        "status": "in-progress",
+        "progress": "60%"
+      },
+      "notes": "Implementation 60% complete. Migration script written, testing pending."
+    }
+  ]
+}

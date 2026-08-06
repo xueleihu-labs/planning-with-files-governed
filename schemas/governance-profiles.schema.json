@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planning-with-files/governance-profiles.schema.json",
+  "title": "planning-with-files governance profiles",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "default_supported_profile",
+    "profile_order",
+    "risk_to_profile",
+    "profiles"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "default_supported_profile": {"enum": ["LIGHT_FAST", "LIGHT_CONTROLLED", "STANDARD", "STRICT"]},
+    "profile_order": {
+      "const": ["LIGHT_FAST", "LIGHT_CONTROLLED", "STANDARD", "STRICT"]
+    },
+    "risk_to_profile": {
+      "type": "object",
+      "required": ["L0", "L1", "L2", "L3"],
+      "properties": {
+        "L0": {"const": "LIGHT_FAST"},
+        "L1": {"const": "LIGHT_CONTROLLED"},
+        "L2": {"const": "STANDARD"},
+        "L3": {"const": "STRICT"}
+      },
+      "additionalProperties": false
+    },
+    "profiles": {
+      "type": "object",
+      "required": ["LIGHT_FAST", "LIGHT_CONTROLLED", "STANDARD", "STRICT"],
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(LIGHT_FAST|LIGHT_CONTROLLED|STANDARD|STRICT)$": {
+          "type": "object",
+          "required": [
+            "risk_level",
+            "enabled_gates",
+            "disabled_gates",
+            "required_stages",
+            "create_formal_plan",
+            "generate_five_tables",
+            "create_checkpoint",
+            "require_pre_write",
+            "require_pre_close",
+            "require_read_head",
+            "require_root_binding",
+            "require_independent_audit",
+            "require_owner_acceptance",
+            "allow_automatic_recovery",
+            "finalization_mode"
+          ],
+          "properties": {
+            "risk_level": {"enum": ["L0", "L1", "L2", "L3"]},
+            "enabled_gates": {"type": "array", "items": {"type": "string"}},
+            "disabled_gates": {"type": "array", "items": {"type": "string"}},
+            "required_stages": {"type": "array", "items": {"enum": ["PRE_WRITE", "POST_WRITE", "PRE_CLOSE"]}},
+            "create_formal_plan": {"type": "boolean"},
+            "generate_five_tables": {"type": "boolean"},
+            "create_checkpoint": {"type": "boolean"},
+            "require_pre_write": {"type": "boolean"},
+            "require_pre_close": {"type": "boolean"},
+            "require_read_head": {"type": "boolean"},
+            "require_root_binding": {"type": "boolean"},
+            "require_independent_audit": {"type": "boolean"},
+            "require_owner_acceptance": {"type": "boolean"},
+            "allow_automatic_recovery": {"type": "boolean"},
+            "finalization_mode": {"enum": ["NONE", "SIMPLE", "ADVANCED"]}
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
