@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planning-with-files/template-metadata.schema.json",
+  "type": "object",
+  "required": ["artifact_type", "workflow_schema_version", "version", "status"],
+  "properties": {
+    "artifact_type": {"enum": ["task-template", "workflow-module"]},
+    "workflow_schema_version": {"const": 1},
+    "version": {"type": "string"},
+    "status": {"enum": ["FORMAL", "EXPERIMENTAL", "DEPRECATED"]}
+  },
+  "additionalProperties": true
+}

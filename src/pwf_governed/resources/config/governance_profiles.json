@@ -1,0 +1,142 @@
+{
+  "schema_version": "1.0",
+  "default_supported_profile": "STRICT",
+  "profile_order": [
+    "LIGHT_FAST",
+    "LIGHT_CONTROLLED",
+    "STANDARD",
+    "STRICT"
+  ],
+  "risk_to_profile": {
+    "L0": "LIGHT_FAST",
+    "L1": "LIGHT_CONTROLLED",
+    "L2": "STANDARD",
+    "L3": "STRICT"
+  },
+  "profiles": {
+    "LIGHT_FAST": {
+      "risk_level": "L0",
+      "enabled_gates": [
+        "DIRECT_EXECUTION",
+        "NECESSARY_TESTS",
+        "RESULT_REPORT"
+      ],
+      "disabled_gates": [
+        "FORMAL_PLAN",
+        "FULL_FIVE_TABLES",
+        "CHECKPOINT",
+        "PRE_WRITE",
+        "PRE_CLOSE",
+        "READ_HEAD",
+        "ROOT_BINDING",
+        "INDEPENDENT_AUDIT",
+        "OWNER_ACCEPTANCE"
+      ],
+      "required_stages": [],
+      "create_formal_plan": false,
+      "generate_five_tables": false,
+      "create_checkpoint": false,
+      "require_pre_write": false,
+      "require_pre_close": false,
+      "require_read_head": false,
+      "require_root_binding": false,
+      "require_independent_audit": false,
+      "require_owner_acceptance": false,
+      "allow_automatic_recovery": true,
+      "finalization_mode": "NONE"
+    },
+    "LIGHT_CONTROLLED": {
+      "risk_level": "L1",
+      "enabled_gates": [
+        "TASK_SCOPE",
+        "NECESSARY_TESTS",
+        "RESULT_REPORT"
+      ],
+      "disabled_gates": [
+        "FORMAL_PLAN",
+        "FULL_FIVE_TABLES",
+        "CHECKPOINT",
+        "PRE_WRITE",
+        "PRE_CLOSE",
+        "MULTIPLE_READ_HEADS",
+        "ROOT_BINDING",
+        "INDEPENDENT_AUDIT",
+        "OWNER_ACCEPTANCE"
+      ],
+      "required_stages": [],
+      "create_formal_plan": false,
+      "generate_five_tables": false,
+      "create_checkpoint": false,
+      "require_pre_write": false,
+      "require_pre_close": false,
+      "require_read_head": false,
+      "require_root_binding": false,
+      "require_independent_audit": false,
+      "require_owner_acceptance": false,
+      "allow_automatic_recovery": true,
+      "finalization_mode": "NONE"
+    },
+    "STANDARD": {
+      "risk_level": "L2",
+      "enabled_gates": [
+        "LIGHT_PLAN",
+        "KEY_MILESTONE_CHECKPOINT",
+        "FINAL_READ_ONLY_AUDIT",
+        "OWNER_FINAL_ACCEPTANCE",
+        "AUTOMATIC_TECHNICAL_RECOVERY"
+      ],
+      "disabled_gates": [
+        "PRE_WRITE",
+        "PRE_CLOSE",
+        "MULTIPLE_READ_HEADS",
+        "INDEPENDENT_ROOT_BINDING"
+      ],
+      "required_stages": [],
+      "create_formal_plan": true,
+      "generate_five_tables": false,
+      "create_checkpoint": true,
+      "require_pre_write": false,
+      "require_pre_close": false,
+      "require_read_head": false,
+      "require_root_binding": false,
+      "require_independent_audit": true,
+      "require_owner_acceptance": true,
+      "allow_automatic_recovery": true,
+      "finalization_mode": "SIMPLE"
+    },
+    "STRICT": {
+      "risk_level": "L3",
+      "enabled_gates": [
+        "FORMAL_PLAN",
+        "FULL_FIVE_TABLES",
+        "CHECKPOINT",
+        "PRE_WRITE",
+        "PRE_CLOSE",
+        "READ_HEAD",
+        "ROOT_BINDING",
+        "INDEPENDENT_AUDIT",
+        "OWNER_ACCEPTANCE",
+        "RESTORE_VALIDATION",
+        "RECEIPT",
+        "SEAL_EVIDENCE"
+      ],
+      "disabled_gates": [],
+      "required_stages": [
+        "PRE_WRITE",
+        "POST_WRITE",
+        "PRE_CLOSE"
+      ],
+      "create_formal_plan": true,
+      "generate_five_tables": true,
+      "create_checkpoint": true,
+      "require_pre_write": true,
+      "require_pre_close": true,
+      "require_read_head": true,
+      "require_root_binding": true,
+      "require_independent_audit": true,
+      "require_owner_acceptance": true,
+      "allow_automatic_recovery": false,
+      "finalization_mode": "ADVANCED"
+    }
+  }
+}

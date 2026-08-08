@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planning-with-files/conflict-report.schema.json",
+  "type": "object",
+  "required": ["conflict_schema_version", "conflict_id", "discovered_at", "target_file", "base_digest", "current_digest", "status"],
+  "properties": {
+    "conflict_schema_version": {"const": 1},
+    "conflict_id": {"type": "string"},
+    "discovered_at": {"type": "string", "format": "date-time"},
+    "target_file": {"type": "string"},
+    "base_digest": {"type": "string"},
+    "current_digest": {"type": "string"},
+    "status": {"enum": ["OPEN", "RESOLVED", "DISCARDED", "SUPERSEDED"]}
+  },
+  "additionalProperties": true
+}

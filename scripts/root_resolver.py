@@ -1,67 +1,69 @@
 #!/usr/bin/env python3
-"""Resolve the skill root directory without user-specific fallbacks."""
-
+"""Explicit Gate 4B compatibility facade."""
+# version source: VERSION
 from __future__ import annotations
 
-import os
+import sys
 from pathlib import Path
-from typing import Optional, Union
 
+_candidate_src = Path(__file__).resolve().parents[1] / "src"
+if _candidate_src.is_dir() and str(_candidate_src) not in sys.path:
+    sys.path.insert(0, str(_candidate_src))
 
-PathLike = Union[str, os.PathLike[str]]
+from pwf_governed._legacy.root_resolver import (
+    Optional,
+    Path,
+    PathLike,
+    RootResolutionError,
+    Union,
+    discover_skill_root,
+    os,
+    resolve_skill_root,
+    _is_inside,
+    _normalise,
+    _trusted_root,
+)
 
+__all__ = [
+    "Optional",
+    "Path",
+    "PathLike",
+    "RootResolutionError",
+    "Union",
+    "discover_skill_root",
+    "os",
+    "resolve_skill_root",
+]
 
-class RootResolutionError(RuntimeError):
-    """Raised when no explicit or trusted skill root is available."""
+# Facade delegation class for test mock compatibility
+import types
 
+class _FacadeModule(types.ModuleType):
+    def __getattribute__(self, name):
+        if name.startswith("_FacadeModule__") or name in {"__class__", "__dict__", "__weakref__", "__module__", "__name__", "__doc__", "__file__", "__path__", "__package__", "__all__"}:
+            return super().__getattribute__(name)
+        try:
+            target = sys.modules["pwf_governed._legacy.root_resolver"]
+            val = getattr(target, name)
+            return val
+        except (KeyError, AttributeError):
+            return super().__getattribute__(name)
 
-def _normalise(raw: PathLike) -> Path:
-    return Path(raw).expanduser().resolve()
+    def __setattr__(self, name, value):
+        if name.startswith("_FacadeModule__") or name in {"__class__", "__dict__", "__weakref__", "__module__", "__name__", "__doc__", "__file__", "__path__", "__package__", "__loader__", "__spec__", "__all__"}:
+            super().__setattr__(name, value)
+        else:
+            try:
+                target = sys.modules["pwf_governed._legacy.root_resolver"]
+                setattr(target, name, value)
+            except (KeyError, AttributeError):
+                super().__setattr__(name, value)
 
+    def __delattr__(self, name):
+        try:
+            target = sys.modules["pwf_governed._legacy.root_resolver"]
+            delattr(target, name)
+        except (KeyError, AttributeError):
+            super().__delattr__(name)
 
-def _is_inside(path: Path, directory: Path) -> bool:
-    try:
-        path.relative_to(directory)
-    except ValueError:
-        return False
-    return True
-
-
-def _trusted_root(candidate: Path, source: Path) -> bool:
-    """Check if candidate contains a valid skill layout with scripts/ and VERSION."""
-    skill_root = candidate
-    return (
-        (skill_root / "scripts").is_dir()
-        and (skill_root / "VERSION").is_file()
-        and _is_inside(source, skill_root / "scripts")
-    )
-
-
-def discover_skill_root(script_path: Optional[PathLike] = None) -> Path:
-    """Find the skill root containing this script's stable layout."""
-
-    source = _normalise(script_path or __file__)
-    start = source if source.is_dir() else source.parent
-    for candidate in (start,) + tuple(start.parents):
-        if _trusted_root(candidate, source):
-            return candidate
-    raise RootResolutionError(
-        "cannot resolve skill root; set PWF_ROOT or pass "
-        "--skill-root, and ensure the script is inside a valid "
-        "planning-with-files-governed checkout"
-    )
-
-
-def resolve_skill_root(
-    explicit: Optional[PathLike] = None,
-    *,
-    script_path: Optional[PathLike] = None,
-) -> Path:
-    """Resolve explicit input, environment configuration, then trusted layout."""
-
-    if explicit is not None and str(explicit).strip():
-        return _normalise(explicit)
-    configured = os.environ.get("PWF_ROOT")
-    if configured and configured.strip():
-        return _normalise(configured)
-    return discover_skill_root(script_path)
+sys.modules[__name__].__class__ = _FacadeModule

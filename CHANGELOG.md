@@ -1,3 +1,7 @@
+## 2.0.0rc1
+
+- Integrate v2.0.0rc1 governed core with dual-edition support (Gate 4C)
+
 # Changelog
 
 All notable changes to planning-with-files-governed are documented in this file.

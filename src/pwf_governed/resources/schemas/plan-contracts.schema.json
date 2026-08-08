@@ -1,0 +1,530 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planning-with-files/plan-contracts.schema.json",
+  "title": "planning-with-files F1 PLAN machine contracts",
+  "description": "Compatible F1-01 contract vocabulary. Unknown fields are intentionally retained.",
+  "oneOf": [
+    {"$ref": "#/$defs/task_envelope"},
+    {"$ref": "#/$defs/plan_package"},
+    {"$ref": "#/$defs/execution_packet"},
+    {"$ref": "#/$defs/condition"},
+    {"$ref": "#/$defs/capability_ref"},
+    {"$ref": "#/$defs/checkpoint_ref"},
+    {"$ref": "#/$defs/knowledge_handoff"},
+    {"$ref": "#/$defs/governance_request"},
+    {"$ref": "#/$defs/governance_receipt"},
+    {"$ref": "#/$defs/execution_receipt"},
+    {"$ref": "#/$defs/routing_decision"},
+    {"$ref": "#/$defs/evolution_signal"},
+    {"$ref": "#/$defs/evolution_receipt"},
+    {"$ref": "#/$defs/knowledge_handoff_package"},
+    {"$ref": "#/$defs/content_ingest_receipt"},
+    {"$ref": "#/$defs/plan_extension"}
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"},
+    "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "scope": {
+      "type": "object",
+      "properties": {
+        "include": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "exclude": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "additionalProperties": true
+    },
+    "condition": {
+      "type": "object",
+      "required": ["condition_id", "condition_type", "description", "required", "evidence_required", "evaluation_method", "status", "evidence_refs"],
+      "properties": {
+        "condition_id": {"$ref": "#/$defs/id"},
+        "condition_type": {"enum": ["COMPLETION", "FAILURE", "PAUSE", "USER_GATE"]},
+        "description": {"type": "string", "minLength": 1},
+        "required": {"type": "boolean"},
+        "evidence_required": {"type": "boolean"},
+        "evaluation_method": {"type": ["string", "object"]},
+        "status": {"enum": ["PENDING", "SATISFIED", "FAILED", "WAIVED", "NOT_APPLICABLE"]},
+        "evidence_refs": {"type": "array"},
+        "risk_level": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]}
+      },
+      "additionalProperties": true
+    },
+    "knowledge_policy": {
+      "type": "object",
+      "required": ["level"],
+      "properties": {
+        "level": {"enum": ["NONE", "BRIEF", "FULL"]},
+        "potential_value": {"type": "string"},
+        "required_evidence": {"type": "array"},
+        "required_images": {"type": "array"},
+        "prohibited_content": {"type": "array"},
+        "redaction_requirements": {"type": "array"},
+        "ingest_required": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "plan_extension": {
+      "type": "object",
+      "required": ["schema_version", "task_envelope", "plan_package", "execution_packets", "execution_receipts"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "task_envelope": {"oneOf": [{"$ref": "#/$defs/task_envelope"}, {"type": "null"}]},
+        "plan_package": {"oneOf": [{"$ref": "#/$defs/plan_package"}, {"type": "null"}]},
+        "execution_packets": {"type": "array", "items": {"$ref": "#/$defs/execution_packet"}},
+        "execution_receipts": {"type": "array", "items": {"$ref": "#/$defs/execution_receipt"}}
+      },
+      "additionalProperties": true
+    },
+    "task_envelope": {
+      "type": "object",
+      "required": ["schema_version", "task_id", "project_id", "title", "objective", "business_value", "user_pain", "scope", "non_goals", "success_criteria", "risk_level", "priority", "human_gates", "time_constraints", "allowed_capabilities", "forbidden_capabilities", "knowledge_policy", "source_evidence", "requested_by", "created_at", "producer", "producer_version"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "task_id": {"$ref": "#/$defs/id"},
+        "project_id": {"$ref": "#/$defs/id"},
+        "title": {"type": "string", "minLength": 1},
+        "objective": {"type": "string", "minLength": 1},
+        "business_value": {"type": "string", "minLength": 1},
+        "user_pain": {"type": "string", "minLength": 1},
+        "scope": {"$ref": "#/$defs/scope"},
+        "non_goals": {"type": "array"},
+        "success_criteria": {"type": "array"},
+        "risk_level": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+        "priority": {"enum": ["P0", "P1", "P2", "P3"]},
+        "human_gates": {"type": "array", "items": {"$ref": "#/$defs/condition"}},
+        "time_constraints": {"type": "object"},
+        "allowed_capabilities": {"type": "array"},
+        "forbidden_capabilities": {"type": "array"},
+        "knowledge_policy": {"$ref": "#/$defs/knowledge_policy"},
+        "source_evidence": {"type": "array"},
+        "requested_by": {"type": "string", "minLength": 1},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"},
+        "midcourse_gate_phase": {"$ref": "#/$defs/id"},
+        "midcourse_gate_entry_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/condition"}
+        },
+        "midcourse_gate_exit_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/condition"}
+        },
+        "midcourse_grill_policy": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": true
+        },
+        "midcourse_review_ref": {"type": ["string", "null"], "minLength": 1},
+        "midcourse_owner_confirmation_ref": {"type": ["string", "null"], "minLength": 1},
+        "midcourse_gate_result": {
+          "enum": ["PENDING", "NOT_REACHED", "PASS", "BLOCKED", "FAILED", "INCONCLUSIVE"]
+        },
+        "owner_acceptance_checklist_ref": {"type": "string", "minLength": 1},
+        "routing_provenance_version": {"$ref": "#/$defs/version"},
+        "phase_id": {"$ref": "#/$defs/id"},
+        "work_item_id": {"$ref": "#/$defs/id"},
+        "canonical_checkpoint_state_root": {"type": "string", "minLength": 1},
+        "checkpoint_lineage_digest": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+        "checkpoint_ref_digest": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+        "read_head": {
+          "type": "object",
+          "required": ["decision", "publication_status", "verification_status", "head_digest"],
+          "properties": {
+            "decision": {"type": "string", "minLength": 1},
+            "publication_status": {"type": "string", "minLength": 1},
+            "verification_status": {"type": "string", "minLength": 1},
+            "head_digest": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+            "head_location": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": true
+        },
+        "routing_input_digest": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+        "decision_digest": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+      },
+      "additionalProperties": true
+    },
+    "plan_package": {
+      "type": "object",
+      "required": ["schema_version", "plan_id", "plan_version", "task_id", "project_id", "task_profile", "objective", "scope", "non_goals", "assumptions", "dependencies", "phases", "capability_refs", "completion_conditions", "failure_conditions", "pause_conditions", "human_gates", "rollback_policy", "evidence_policy", "knowledge_policy", "governance_policy", "cleanup_policy", "status_summary", "created_at", "producer", "producer_version"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "plan_version": {"$ref": "#/$defs/version"},
+        "task_id": {"$ref": "#/$defs/id"},
+        "project_id": {"$ref": "#/$defs/id"},
+        "task_profile": {"type": "string", "minLength": 1},
+        "objective": {"type": "string", "minLength": 1},
+        "scope": {"$ref": "#/$defs/scope"},
+        "non_goals": {"type": "array"},
+        "assumptions": {"type": "array"},
+        "dependencies": {"type": "array"},
+        "phases": {"type": "array", "items": {"type": "object", "required": ["phase_id"]}},
+        "capability_refs": {"type": "array", "items": {"$ref": "#/$defs/capability_ref"}},
+        "completion_conditions": {"type": "array", "items": {"$ref": "#/$defs/condition"}},
+        "failure_conditions": {"type": "array", "items": {"$ref": "#/$defs/condition"}},
+        "pause_conditions": {"type": "array", "items": {"$ref": "#/$defs/condition"}},
+        "human_gates": {"type": "array", "items": {"$ref": "#/$defs/condition"}},
+        "rollback_policy": {"type": "object"},
+        "evidence_policy": {"type": "object"},
+        "knowledge_policy": {"$ref": "#/$defs/knowledge_policy"},
+        "governance_policy": {"type": "object"},
+        "cleanup_policy": {"type": "object"},
+        "status_summary": {"type": "object"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"},
+        "midcourse_gate_phase": {"$ref": "#/$defs/id"},
+        "midcourse_gate_entry_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/condition"}
+        },
+        "midcourse_gate_exit_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/condition"}
+        },
+        "midcourse_grill_policy": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": true
+        },
+        "midcourse_review_ref": {"type": ["string", "null"], "minLength": 1},
+        "midcourse_owner_confirmation_ref": {"type": ["string", "null"], "minLength": 1},
+        "midcourse_gate_result": {
+          "enum": ["PENDING", "NOT_REACHED", "PASS", "BLOCKED", "FAILED", "INCONCLUSIVE"]
+        },
+        "owner_acceptance_checklist_ref": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "execution_packet": {
+      "type": "object",
+      "required": ["schema_version", "packet_id", "plan_id", "plan_version", "task_id", "phase_id", "work_item_id", "skill_ref", "objective", "allowed_scope", "forbidden_scope", "inputs", "expected_outputs", "completion_conditions", "failure_conditions", "pause_conditions", "evidence_requirements", "permissions", "governance_requirements", "timeout_policy", "receipt_requirements", "created_at", "producer", "producer_version"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "packet_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "plan_version": {"$ref": "#/$defs/version"},
+        "task_id": {"$ref": "#/$defs/id"},
+        "phase_id": {"$ref": "#/$defs/id"},
+        "work_item_id": {"$ref": "#/$defs/id"},
+        "skill_ref": {"type": ["string", "object"]},
+        "objective": {"type": "string", "minLength": 1},
+        "allowed_scope": {"$ref": "#/$defs/scope"},
+        "forbidden_scope": {"$ref": "#/$defs/scope"},
+        "inputs": {"type": "object"},
+        "expected_outputs": {"type": "object"},
+        "completion_conditions": {"type": "array", "items": {"$ref": "#/$defs/condition"}},
+        "failure_conditions": {"type": "array", "items": {"$ref": "#/$defs/condition"}},
+        "pause_conditions": {"type": "array", "items": {"$ref": "#/$defs/condition"}},
+        "evidence_requirements": {"type": "object"},
+        "permissions": {"type": "object"},
+        "governance_requirements": {"type": "object"},
+        "timeout_policy": {"type": "object"},
+        "receipt_requirements": {"type": "object"},
+        "revision": {"type": "integer", "minimum": 1},
+        "revision_type": {"enum": ["GOVERNANCE_SEQUENCE_REPAIR"]},
+        "predecessor_checkpoint_id": {"$ref": "#/$defs/id"},
+        "revision_reason": {"type": "string", "minLength": 1},
+        "revision_scope": {"type": "string", "minLength": 1},
+        "technical_reexecution": {"type": "boolean"},
+        "audit_reexecution": {"type": "boolean"},
+        "revision_evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "execution_receipt_reuse": {
+          "type": "object",
+          "required": ["enabled", "source_packet_id", "source_packet_ref", "source_packet_digest", "source_receipt_id", "source_receipt_ref", "source_receipt_digest"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "source_packet_id": {"$ref": "#/$defs/id"},
+            "source_packet_ref": {"type": "string", "minLength": 1},
+            "source_packet_digest": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+            "source_receipt_id": {"$ref": "#/$defs/id"},
+            "source_receipt_ref": {"type": "string", "minLength": 1},
+            "source_receipt_digest": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+          },
+          "additionalProperties": true
+        },
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"}
+      },
+      "additionalProperties": true
+    },
+    "capability_ref": {
+      "type": "object",
+      "required": ["skill_id", "skill_version", "capability_id", "capability_version", "registry_ref", "input_contract_ref", "output_contract_ref", "risk_level", "side_effect_level", "supports_preview", "is_idempotent", "compatibility_status"],
+      "properties": {
+        "skill_id": {"type": "string", "minLength": 1},
+        "skill_version": {"$ref": "#/$defs/version"},
+        "capability_id": {"type": "string", "minLength": 1},
+        "capability_version": {"$ref": "#/$defs/version"},
+        "registry_ref": {"type": "string", "minLength": 1},
+        "input_contract_ref": {"type": "string", "minLength": 1},
+        "output_contract_ref": {"type": "string", "minLength": 1},
+        "risk_level": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+        "side_effect_level": {"enum": ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+        "supports_preview": {"type": "boolean"},
+        "is_idempotent": {"type": "boolean"},
+        "compatibility_status": {"enum": ["COMPATIBLE", "COMPATIBLE_WITH_WARNINGS", "INCOMPATIBLE", "UNREGISTERED", "UNCONFIRMED"]}
+      },
+      "additionalProperties": true
+    },
+    "checkpoint_ref": {
+      "type": "object",
+      "required": ["checkpoint_id", "checkpoint_status", "plan_id", "plan_version", "phase_id", "evidence_refs", "resume_entry", "receipt_location", "producer", "producer_version", "created_at"],
+      "properties": {
+        "checkpoint_id": {"$ref": "#/$defs/id"},
+        "checkpoint_status": {"enum": ["PENDING", "ACTIVE", "PASSED", "FAILED", "PAUSED", "BLOCKED", "CLOSED", "UNKNOWN"]},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "plan_version": {"$ref": "#/$defs/version"},
+        "phase_id": {"$ref": "#/$defs/id"},
+        "evidence_refs": {"type": "array"},
+        "resume_entry": {"type": "string", "minLength": 1},
+        "receipt_location": {"type": "string", "minLength": 1},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"},
+        "created_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": true
+    },
+    "knowledge_handoff": {
+      "type": "object",
+      "required": ["handoff_id", "dedupe_key", "handoff_status", "handoff_location", "ingest_receipt_ref"],
+      "properties": {
+        "handoff_id": {"$ref": "#/$defs/id"},
+        "dedupe_key": {"type": "string", "minLength": 1},
+        "handoff_status": {"enum": ["NOT_REQUIRED", "PENDING_GENERATION", "PENDING_INGEST", "INGESTED", "FAILED_RETRYABLE", "BLOCKED_SECURITY"]},
+        "handoff_location": {"type": "string", "minLength": 1},
+        "ingest_receipt_ref": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "routing_decision": {
+      "type": "object",
+      "required": ["decision_id", "task_id", "plan_id", "checkpoint_id", "decision", "evolution_required", "content_required", "evolution_signal_ref", "knowledge_handoff_ref", "evolution_receipt_ref", "content_ingest_receipt_ref", "evidence_refs", "warnings", "blocking_findings", "human_review_required", "created_at", "producer", "producer_version"],
+      "properties": {
+        "decision_id": {"$ref": "#/$defs/id"},
+        "task_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "checkpoint_id": {"type": ["string", "null"]},
+        "decision": {"enum": ["NO_VALUE", "EVOLUTION_ONLY", "CONTENT_ONLY", "EVOLUTION_AND_CONTENT", "HUMAN_REVIEW_REQUIRED"]},
+        "evolution_required": {"type": "boolean"},
+        "content_required": {"type": "boolean"},
+        "content_judgment": {
+          "type": "object",
+          "required": ["status", "reason_code", "reason", "evidence_ref", "decided_by"],
+          "properties": {
+            "status": {"enum": ["REQUIRED", "NOT_APPLICABLE"]},
+            "reason_code": {"enum": ["CONTENT_OUTPUT_REQUIRED", "ENGINEERING_GOVERNANCE_ONLY"]},
+            "reason": {"type": "string", "minLength": 1},
+            "evidence_ref": {"type": "string", "minLength": 1},
+            "decided_by": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": true
+        },
+        "evolution_signal_ref": {"type": ["string", "null"]},
+        "knowledge_handoff_ref": {"type": ["string", "null"]},
+        "evolution_receipt_ref": {"type": ["string", "null"]},
+        "content_ingest_receipt_ref": {"type": ["string", "null"]},
+        "evidence_refs": {"type": "array"},
+        "warnings": {"type": "array", "items": {"type": "string"}},
+        "blocking_findings": {"type": "array", "items": {"type": "string"}},
+        "human_review_required": {"type": "boolean"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"}
+      },
+      "additionalProperties": true
+    },
+    "evolution_signal": {
+      "type": "object",
+      "required": ["signal_id", "dedupe_key", "task_id", "plan_id", "phase_id", "checkpoint_id", "signal_types", "failure_counts", "correction_counts", "manual_action_counts", "reusable_rule_candidates", "skill_gap_candidates", "contract_gap_candidates", "automation_candidates", "excluded_private_facts", "evidence_refs", "e0_result", "handoff_status", "created_at", "producer", "producer_version"],
+      "properties": {
+        "signal_id": {"$ref": "#/$defs/id"},
+        "dedupe_key": {"type": "string", "minLength": 1},
+        "task_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "phase_id": {"$ref": "#/$defs/id"},
+        "checkpoint_id": {"type": ["string", "null"]},
+        "signal_types": {"type": "array", "items": {"type": "string"}},
+        "failure_counts": {"type": "object"},
+        "correction_counts": {"type": "object"},
+        "manual_action_counts": {"type": "object"},
+        "reusable_rule_candidates": {"type": "array", "items": {"type": "string"}},
+        "skill_gap_candidates": {"type": "array", "items": {"type": "string"}},
+        "contract_gap_candidates": {"type": "array", "items": {"type": "string"}},
+        "automation_candidates": {"type": "array", "items": {"type": "string"}},
+        "excluded_private_facts": {"type": "array", "items": {"type": "string"}},
+        "evidence_refs": {"type": "array"},
+        "e0_result": {"enum": ["NO_EVOLUTION", "EVOLUTION_PROPOSAL", "HUMAN_REVIEW_REQUIRED"]},
+        "handoff_status": {"enum": ["NOT_REQUIRED", "READY_FOR_BRIDGE", "PENDING_PROCESSING", "CANDIDATE_CREATED", "APPLIED", "REJECTED_NO_VALUE", "BLOCKED", "FAILED_RETRYABLE"]},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"}
+      },
+      "additionalProperties": true
+    },
+    "evolution_receipt": {
+      "type": "object",
+      "required": ["receipt_id", "signal_id", "dedupe_key", "task_id", "plan_id", "result", "e0_result", "proposal_id", "candidate_id", "application_status", "checkpoint_ref", "changed_assets", "evidence_refs", "warnings", "blocking_findings", "processed_at", "producer", "producer_version"],
+      "properties": {
+        "receipt_id": {"$ref": "#/$defs/id"},
+        "signal_id": {"$ref": "#/$defs/id"},
+        "dedupe_key": {"type": "string", "minLength": 1},
+        "task_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "result": {"enum": ["NO_EVOLUTION", "CANDIDATE_CREATED", "DUPLICATE_EXISTING", "APPLIED", "REJECTED", "BLOCKED", "FAILED_RETRYABLE"]},
+        "e0_result": {"enum": ["NO_EVOLUTION", "EVOLUTION_PROPOSAL", "HUMAN_REVIEW_REQUIRED"]},
+        "proposal_id": {"type": ["string", "null"]},
+        "candidate_id": {"type": ["string", "null"]},
+        "application_status": {"type": "string", "minLength": 1},
+        "checkpoint_ref": {"type": ["string", "object", "null"]},
+        "changed_assets": {"type": "array"},
+        "evidence_refs": {"type": "array"},
+        "warnings": {"type": "array", "items": {"type": "string"}},
+        "blocking_findings": {"type": "array", "items": {"type": "string"}},
+        "processed_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"}
+      },
+      "additionalProperties": true
+    },
+    "knowledge_handoff_package": {
+      "type": "object",
+      "required": ["handoff_id", "dedupe_key", "task_id", "plan_id", "project_name", "source_type", "content_title", "content_summary", "core_value", "reusable_knowledge", "project_specific_facts", "target_audience", "recommended_platforms", "content_angles", "evidence_refs", "image_refs", "source_paths", "sensitive_content", "redaction_requirements", "handoff_status", "created_at", "producer", "producer_version"],
+      "properties": {
+        "handoff_id": {"$ref": "#/$defs/id"},
+        "dedupe_key": {"type": "string", "minLength": 1},
+        "task_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "project_name": {"type": "string", "minLength": 1},
+        "source_type": {"type": "string", "minLength": 1},
+        "content_title": {"type": "string", "minLength": 1},
+        "content_summary": {"type": "string", "minLength": 1},
+        "core_value": {"type": "string", "minLength": 1},
+        "reusable_knowledge": {"type": "array", "items": {"type": "string"}},
+        "project_specific_facts": {"type": "array", "items": {"type": "string"}},
+        "target_audience": {"type": "array", "items": {"type": "string"}},
+        "recommended_platforms": {"type": "array", "items": {"enum": ["XIAOHONGSHU", "WECHAT_OFFICIAL_ACCOUNT", "BAIJIAHAO", "INTERNAL_KNOWLEDGE"]}},
+        "content_angles": {"type": "array", "items": {"type": "string"}},
+        "evidence_refs": {"type": "array"},
+        "image_refs": {"type": "array", "items": {"type": "string"}},
+        "source_paths": {"type": "array", "items": {"type": "string"}},
+        "sensitive_content": {"type": ["boolean", "array", "object"]},
+        "redaction_requirements": {"type": "array", "items": {"type": "string"}},
+        "handoff_status": {"enum": ["NOT_REQUIRED", "PENDING_GENERATION", "PENDING_INGEST", "INGESTED", "FAILED_RETRYABLE", "BLOCKED_SECURITY"]},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"}
+      },
+      "additionalProperties": true
+    },
+    "content_ingest_receipt": {
+      "type": "object",
+      "required": ["receipt_id", "handoff_id", "dedupe_key", "task_id", "plan_id", "result", "destination_system", "destination_path", "created_assets", "platform_candidates", "warnings", "blocking_findings", "evidence_refs", "ingested_at", "producer", "producer_version"],
+      "properties": {
+        "receipt_id": {"$ref": "#/$defs/id"},
+        "handoff_id": {"$ref": "#/$defs/id"},
+        "dedupe_key": {"type": "string", "minLength": 1},
+        "task_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "result": {"enum": ["INGESTED", "REJECTED_NO_VALUE", "DUPLICATE_EXISTING", "BLOCKED_SECURITY", "FAILED_RETRYABLE", "INCONCLUSIVE"]},
+        "destination_system": {"type": "string", "minLength": 1},
+        "destination_path": {"type": "string", "minLength": 1},
+        "created_assets": {"type": "array", "items": {"type": "string"}},
+        "platform_candidates": {"type": "array", "items": {"enum": ["XIAOHONGSHU", "WECHAT_OFFICIAL_ACCOUNT", "BAIJIAHAO", "INTERNAL_KNOWLEDGE"]}},
+        "warnings": {"type": "array", "items": {"type": "string"}},
+        "blocking_findings": {"type": "array", "items": {"type": "string"}},
+        "evidence_refs": {"type": "array"},
+        "ingested_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"}
+      },
+      "additionalProperties": true
+    },
+    "governance_request": {
+      "type": "object",
+      "required": ["request_id", "task_id", "plan_id", "plan_version", "phase_id", "governance_stage", "allowed_paths", "forbidden_paths", "expected_changes", "protected_assets", "known_dirty_paths", "temporary_artifact_policy", "cleanup_policy", "knowledge_policy", "evidence_refs", "requested_checks", "requested_at"],
+      "properties": {
+        "request_id": {"$ref": "#/$defs/id"},
+        "task_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "plan_version": {"$ref": "#/$defs/version"},
+        "phase_id": {"$ref": "#/$defs/id"},
+        "governance_stage": {"enum": ["PRE_WRITE", "POST_WRITE", "PRE_CLOSE"]},
+        "allowed_paths": {"type": "array"},
+        "forbidden_paths": {"type": "array"},
+        "expected_changes": {"type": "array"},
+        "protected_assets": {"type": "array"},
+        "known_dirty_paths": {"type": "array"},
+        "temporary_artifact_policy": {"type": "object"},
+        "cleanup_policy": {"type": "object"},
+        "knowledge_policy": {"type": "object"},
+        "evidence_refs": {"type": "array"},
+        "requested_checks": {"type": "array"},
+        "requested_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": true
+    },
+    "governance_receipt": {
+      "type": "object",
+      "required": ["receipt_id", "request_id", "task_id", "plan_id", "phase_id", "governance_stage", "result", "cleanliness_status", "scope_match", "blocking_findings", "non_blocking_findings", "duplicate_candidates", "unused_asset_candidates", "cleanup_actions", "protected_assets_status", "evidence_refs", "checked_at", "producer", "producer_version"],
+      "properties": {
+        "receipt_id": {"$ref": "#/$defs/id"},
+        "request_id": {"$ref": "#/$defs/id"},
+        "task_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "phase_id": {"$ref": "#/$defs/id"},
+        "governance_stage": {"enum": ["PRE_WRITE", "POST_WRITE", "PRE_CLOSE"]},
+        "result": {"enum": ["PASS", "PASS_WITH_WARNINGS", "BLOCKED", "INCONCLUSIVE"]},
+        "cleanliness_status": {"type": "string", "minLength": 1},
+        "scope_match": {"type": ["boolean", "string"]},
+        "blocking_findings": {"type": "array"},
+        "non_blocking_findings": {"type": "array"},
+        "duplicate_candidates": {"type": "array"},
+        "unused_asset_candidates": {"type": "array"},
+        "cleanup_actions": {"type": "array"},
+        "protected_assets_status": {"type": "object"},
+        "evidence_refs": {"type": "array"},
+        "checked_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"}
+      },
+      "additionalProperties": true
+    },
+    "execution_receipt": {
+      "type": "object",
+      "required": ["schema_version", "receipt_id", "packet_id", "plan_id", "plan_version", "task_id", "phase_id", "work_item_id", "skill_ref", "result", "summary", "changed_paths", "created_assets", "deleted_assets", "test_results", "evidence_refs", "warnings", "blocking_findings", "rollback_status", "started_at", "completed_at", "producer", "producer_version"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "receipt_id": {"$ref": "#/$defs/id"},
+        "packet_id": {"$ref": "#/$defs/id"},
+        "plan_id": {"$ref": "#/$defs/id"},
+        "plan_version": {"$ref": "#/$defs/version"},
+        "task_id": {"$ref": "#/$defs/id"},
+        "phase_id": {"$ref": "#/$defs/id"},
+        "work_item_id": {"$ref": "#/$defs/id"},
+        "skill_ref": {"type": ["string", "object"]},
+        "result": {"enum": ["PASS", "PASS_WITH_WARNINGS", "FAILED", "BLOCKED", "INCONCLUSIVE"]},
+        "summary": {"type": "string", "minLength": 1},
+        "changed_paths": {"type": "array"},
+        "created_assets": {"type": "array"},
+        "deleted_assets": {"type": "array"},
+        "test_results": {"type": "object"},
+        "evidence_refs": {"type": "array"},
+        "warnings": {"type": "array"},
+        "blocking_findings": {"type": "array"},
+        "rollback_status": {"enum": ["NOT_REQUIRED", "PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"]},
+        "started_at": {"$ref": "#/$defs/timestamp"},
+        "completed_at": {"$ref": "#/$defs/timestamp"},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"$ref": "#/$defs/version"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

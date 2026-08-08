@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planning-with-files/candidate.schema.json",
+  "type": "object",
+  "required": ["candidate_schema_version", "candidate_id", "source_template_id", "source_template_version", "status", "created_at", "updated_at"],
+  "properties": {
+    "candidate_schema_version": {"const": 1},
+    "candidate_id": {"type": "string", "pattern": "^cand-[0-9]{8}-[0-9a-f]{12}$"},
+    "source_template_id": {"type": "string"},
+    "source_template_version": {"type": "string"},
+    "status": {"enum": ["PROPOSED", "VALIDATING", "APPROVED", "APPLIED", "REJECTED", "SUPERSEDED"]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": true
+}

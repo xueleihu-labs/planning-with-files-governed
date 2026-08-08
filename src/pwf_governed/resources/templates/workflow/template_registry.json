@@ -1,0 +1,59 @@
+{
+  "modules": [
+    {
+      "current_version": "1.0.0",
+      "id": "testing",
+      "lifecycle": "FORMAL",
+      "lifecycle_status": "FORMAL",
+      "name": "测试验证",
+      "keywords": [
+        "测试",
+        "验证"
+      ],
+      "exclude_keywords": [],
+      "digest": "b97759972c0ffc8518a1aa1de61734126fb2099663d95f953813c8a28e0dfdd0",
+      "usage_count": 0,
+      "success_count": 0
+    }
+  ],
+  "registry_schema_version": 1,
+  "templates": [
+    {
+      "current_version": "1.0.0",
+      "id": "generic-project",
+      "lifecycle": "FORMAL",
+      "lifecycle_status": "FORMAL",
+      "name": "通用项目",
+      "keywords": [
+        "通用项目"
+      ],
+      "exclude_keywords": [],
+      "artifact_signals": [],
+      "digest": "89407394a0412da37d6c96d198b75372190498ae0a51af37494961e781b3082b",
+      "usage_count": 0,
+      "success_count": 0
+    },
+    {
+      "current_version": "1.0.0",
+      "id": "skill-create",
+      "lifecycle": "EXPERIMENTAL",
+      "lifecycle_status": "EXPERIMENTAL",
+      "name": "创建 Skill",
+      "keywords": [
+        "创建 Skill",
+        "新建 SKILL.md"
+      ],
+      "exclude_keywords": [
+        "迁移 Skill",
+        "优化 Skill"
+      ],
+      "artifact_signals": [
+        "SKILL.md",
+        "SKILL"
+      ],
+      "digest": "f1f3f2868545d9984df671be8fd4df8f0be597a97c1eb796a194967471e462a9",
+      "usage_count": 0,
+      "success_count": 0
+    }
+  ]
+}
