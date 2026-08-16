@@ -12,6 +12,20 @@ ROOT = Path(__file__).resolve().parent.parent
 VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 
 
+def public_release_version(package_version: str) -> str:
+    """Map a PEP 440 release candidate to its public GitHub version."""
+
+    match = re.fullmatch(r"(?P<release>\d+\.\d+\.\d+)(?:rc(?P<rc>\d+))?", package_version)
+    if not match:
+        return f"v{package_version}"
+    release = match.group("release")
+    rc = match.group("rc")
+    return f"v{release}-rc.{rc}" if rc else f"v{release}"
+
+
+PUBLIC_VERSION = public_release_version(VERSION)
+
+
 def require(path: Path, pattern: str) -> str | None:
     text = path.read_text(encoding="utf-8", errors="replace")
     if not re.search(pattern, text, re.MULTILINE):
@@ -22,8 +36,16 @@ def require(path: Path, pattern: str) -> str | None:
 def main() -> int:
     errors = []
     errors.append(require(ROOT / "SKILL.md", rf"^version:\s*{re.escape(VERSION)}\s*$"))
-    errors.append(require(ROOT / "README.md", rf"v{re.escape(VERSION)}"))
-    errors.append(require(ROOT / "CHANGELOG.md", rf"^##\s+{re.escape(VERSION)}"))
+    errors.append(require(ROOT / "README.md", re.escape(PUBLIC_VERSION)))
+    if PUBLIC_VERSION != f"v{VERSION}":
+        errors.append(
+            require(
+                ROOT / "README.md",
+                rf"Python package version is `{re.escape(VERSION)}`; the GitHub release/tag is `{re.escape(PUBLIC_VERSION)}`",
+            )
+        )
+    changelog_version = re.escape(PUBLIC_VERSION.removeprefix("v"))
+    errors.append(require(ROOT / "CHANGELOG.md", rf"^##\s+\[?{changelog_version}\]?(?:\s+-|\s*$)"))
     for path in (ROOT / "templates").glob("*.md"):
         if path.name == "INDEX.md":
             continue
@@ -40,7 +62,7 @@ def main() -> int:
         print("VERSION CHECK FAIL")
         print("\n".join("- " + error for error in errors))
         return 1
-    print(f"VERSION CHECK PASS: {VERSION}")
+    print(f"VERSION CHECK PASS: {VERSION} (public release {PUBLIC_VERSION})")
     return 0
 
 

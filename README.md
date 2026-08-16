@@ -1,8 +1,10 @@
-# planning-with-files-governed v2.0.0rc1
+# planning-with-files-governed v2.0.0-rc.1
 
 A governance-oriented, file-based planning and checkpoint system for AI coding agents — with immutable checkpoints, cross-platform handoff, and L0–L3 governance profiles.
 
 > **Non-official derivative disclaimer:** planning-with-files-governed is an independent, community-maintained derivative of planning-with-files. It is not affiliated with, endorsed by, or maintained by the upstream author.
+
+The Python package version is `2.0.0rc1`; the GitHub release/tag is `v2.0.0-rc.1`. This is a pre-release candidate, not the final `v2.0.0` release.
 
 ---
 
@@ -273,4 +275,3 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting and security guidelin
 **许可证：** MIT（双重版权：Copyright (c) 2026 Ahmad Adi + Copyright (c) 2026 xueleihu52-arch）
 
 **安装：** Python ≥ 3.10，无需外部依赖，克隆后即可使用。
-

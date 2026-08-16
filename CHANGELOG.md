@@ -1,13 +1,30 @@
-## 2.0.0rc1
-
-- Integrate v2.0.0rc1 governed core with dual-edition support (Gate 4C)
-
 # Changelog
 
 All notable changes to planning-with-files-governed are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.0.0-rc.1] - 2026-08-08
+
+### Added
+
+- First v2 release candidate for the Community Edition.
+- Modular v2 architecture.
+- Installable `pwf` CLI.
+
+### Changed
+
+- Preserved legacy Plan, checkpoint, and handoff compatibility.
+- Adopted a canonical shared-core architecture.
+- Supports Python `>=3.10`.
+
+### Notes
+
+- Python package version: `2.0.0rc1`.
+- GitHub release/tag: `v2.0.0-rc.1`.
+- This is a pre-release candidate for `v2.0.0`; the final release is not included.
+- Use one PWF distribution per Python environment.
 
 ## 1.0.1 - 2026-08-06
 

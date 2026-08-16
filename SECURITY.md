@@ -99,7 +99,10 @@ The CI pipeline includes:
 
 | Version | Supported |
 |---------|-----------|
-| 1.0.x   | Yes       |
+| 2.0.0-rc.1 | Pre-release under active evaluation; security reports accepted |
+| 1.0.x      | Yes (stable supported line)                         |
+
+The `2.0.0-rc.1` line is not a stable or long-term support commitment. Security reports affecting the RC may be submitted through GitHub Private Vulnerability Reporting; fixes and release timing are evaluated case by case.
 
 ## Disclosure Policy
 
