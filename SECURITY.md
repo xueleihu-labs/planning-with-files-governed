@@ -4,11 +4,11 @@
 
 If you discover a security vulnerability in planning-with-files-governed, please report it responsibly.
 
-- **Contact**: <security-contact>
+- **Contact**: Use GitHub Private Vulnerability Reporting. Navigate to the repository's [Security page](https://github.com/xueleihu-labs/planning-with-files-governed/security) and select **Report a vulnerability** to submit a private report.
 - **Response time**: Within 72 hours for initial acknowledgment.
 - **Process**: We will investigate, develop a fix, and coordinate disclosure.
 
-Please **do not** open a public GitHub issue for security vulnerabilities. Report privately via the contact above.
+Please **do not** open a public GitHub issue for security vulnerabilities. Use the private reporting flow above instead.
 
 When reporting, please include:
 - A description of the vulnerability and its impact.
