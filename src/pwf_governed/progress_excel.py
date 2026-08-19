@@ -45,7 +45,7 @@ DECISION_HEADERS = ["决策项", "背景与影响", "推荐方案", "老板裁�
 # 4: Status Blue (Doing/Running: fill #CCE5FF, bold text #004085, thin border)
 # 5: Status Yellow (Todo/Pending: fill #FFF3CD, bold text #856404, thin border)
 # 6: Status Red (Blocked/Fail: fill #F8D7DA, bold text #721C24, thin border)
-# 7: Boss Log Header (Teal #17A2B8 or Steel Blue #2C3E50, bold white text, thin border)
+# 7: Boss Log Header (Teal/Steel Blue #2C3E50, bold white text, thin border)
 
 STYLES_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -96,14 +96,14 @@ STYLES_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 def get_status_style(status_str: str) -> int:
     """Return matching style index for status strings."""
     s = (status_str or "").strip().upper()
-    if s in ("SEALED", "PASS", "DONE", "COMPLETED", "已封板", "已完成", "通过"):
-        return 3 # Green
+    if s in ("SEALED", "PASS", "DONE", "COMPLETED", "已封板", "已完成", "通过", "全实现"):
+        return 3  # Green
     if s in ("DOING", "RUNNING", "IN_PROGRESS", "进行中"):
-        return 4 # Blue
+        return 4  # Blue
     if s in ("TODO", "PENDING", "UNSTARTED", "未开始", "待办"):
-        return 5 # Yellow
+        return 5  # Yellow
     if s in ("BLOCKED", "FAIL", "FAILED", "ERROR", "已阻断", "阻断", "失败", "卡点"):
-        return 6 # Red
+        return 6  # Red
     return 0
 
 
@@ -367,6 +367,14 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
     if not task_dirs and (planning_root / "1_master_plan.md").exists():
         task_dirs.append(planning_root)
 
+    # Check project-level index for global status
+    global_status = ""
+    index_file = planning_root / "00_PROJECT_INDEX.md"
+    if index_file.exists():
+        idx_text = index_file.read_text(encoding="utf-8", errors="ignore")
+        if "TASK_STATUS=COMPLETE" in idx_text or "SYSTEM_STATUS=EFFECTIVE" in idx_text:
+            global_status = "SEALED"
+
     for t_dir in task_dirs:
         task_id = t_dir.name
         master_plan_file = t_dir / "1_master_plan.md"
@@ -377,9 +385,11 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
         title = task_id
         summary = ""
         owner = "mac-codex"
-        status = "TODO"
+        status = global_status or "TODO"
         phase = "V1"
         updated = dt.date.today().strftime("%Y-%m-%d")
+        total_cbs = 0
+        done_cbs = 0
 
         if master_plan_file.exists():
             text = master_plan_file.read_text(encoding="utf-8", errors="ignore")
@@ -387,36 +397,67 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
             title = fm.get("title", title)
             summary = fm.get("summary", "")
             owner = fm.get("owner", owner)
-            status = fm.get("status", status)
+            if "status" in fm:
+                status = fm["status"]
             phase = fm.get("phase", phase)
             updated = fm.get("updated", updated)
 
-            # Extract summary from first quote if empty
-            if not summary:
-                quote_match = re.search(r">\s*实施结果[：:]\s*`?([^`\n]+)`?", text)
-                if quote_match:
-                    summary = quote_match.group(1).strip()
+            # Extract title from markdown H1 if not set in frontmatter
+            if title == task_id:
+                t_match = re.search(r"^#\s*([^#\n]+?)(?:\s*项目主计划|\s*主计划|\s*Master Plan)?\s*$", text, re.MULTILINE)
+                if t_match:
+                    title = t_match.group(1).strip()
 
-            # Extract phase steps from "## 阶段与 Done Criteria"
-            phase_section = re.search(r"##\s*阶段与\s*Done Criteria\s*\n(.*?)(?=\n##|\Z)", text, re.DOTALL)
-            if phase_section:
-                lines = phase_section.group(1).strip().split("\n")
-                p_idx = 1
-                for line in lines:
-                    line = line.strip()
-                    m = re.match(r"^(\d+)\.\s*(.+)", line)
-                    if m:
-                        step_text = m.group(2).strip()
-                        phase_steps.append({
-                            "task_id": task_id,
-                            "phase_no": f"P{m.group(1)}",
-                            "step_name": step_text,
-                            "status": "PASS" if status.upper() in ("SEALED", "PASS") else "TODO",
-                            "done_criteria": "完成标准校验",
-                            "evidence_ref": f"{task_id}/evidence",
-                            "notes": "",
-                        })
-                        p_idx += 1
+            # Extract summary from first section heading or blockquote
+            if not summary:
+                first_sec = re.search(r"##\s*[^#\n]+\n+([^#\n>][^\n]+)", text)
+                if first_sec:
+                    summary = first_sec.group(1).strip()
+                else:
+                    quote_match = re.search(r">\s*(?:实施结果|当前归档状态|当前状态)[：:]\s*`?([^`\n]+)`?", text)
+                    if quote_match:
+                        summary = quote_match.group(1).strip()
+
+            if "TASK_STATUS=COMPLETE" in text:
+                status = "SEALED"
+
+            # 1. Extract checkbox steps from Done Criteria
+            cb_matches = re.findall(r"-\s*\[([ xX])\]\s*(.+)", text)
+            if cb_matches:
+                total_cbs = len(cb_matches)
+                done_cbs = sum(1 for m, _ in cb_matches if m.lower() == "x")
+                for idx, (mark, step_text) in enumerate(cb_matches, start=1):
+                    is_done = mark.lower() == "x"
+                    step_clean = re.sub(r"[*_`]", "", step_text).strip()
+                    phase_steps.append({
+                        "task_id": task_id,
+                        "phase_no": f"P{idx}",
+                        "step_name": step_clean,
+                        "status": "PASS" if is_done else "TODO",
+                        "done_criteria": "Done Criteria 验收",
+                        "evidence_ref": f"{task_id}/evidence",
+                        "notes": "",
+                    })
+
+            # 2. Extract numbered phase steps from "## 阶段与 Done Criteria"
+            if not cb_matches:
+                phase_section = re.search(r"##\s*阶段与\s*Done Criteria\s*\n(.*?)(?=\n##|\Z)", text, re.DOTALL)
+                if phase_section:
+                    lines = phase_section.group(1).strip().split("\n")
+                    for line in lines:
+                        line = line.strip()
+                        m = re.match(r"^(\d+)\.\s*(.+)", line)
+                        if m:
+                            step_text = m.group(2).strip()
+                            phase_steps.append({
+                                "task_id": task_id,
+                                "phase_no": f"P{m.group(1)}",
+                                "step_name": step_text,
+                                "status": "PASS" if status.upper() in ("SEALED", "PASS") else "TODO",
+                                "done_criteria": "完成标准校验",
+                                "evidence_ref": f"{task_id}/evidence",
+                                "notes": "",
+                            })
 
         if status_file.exists():
             st_text = status_file.read_text(encoding="utf-8", errors="ignore")
@@ -428,10 +469,10 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
 
             # Parse markdown gates table | Gate | 状态 | 证据 |
             table_matches = re.findall(r"\|\s*([^|\n]+)\s*\|\s*([^|\n]+)\s*\|\s*([^|\n]+)\s*\|", st_text)
-            if len(table_matches) > 1: # Skip header
+            if len(table_matches) > 1:
                 for row in table_matches[1:]:
                     gate_name, g_status, g_evidence = [col.strip() for col in row]
-                    if gate_name.startswith("-") or gate_name in ("Gate", "检查项"):
+                    if gate_name.startswith("-") or gate_name in ("Gate", "检查项", "门禁"):
                         continue
                     phase_steps.append({
                         "task_id": task_id,
@@ -443,8 +484,60 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
                         "notes": "",
                     })
 
-        # Calculate progress percentage
-        progress_pct = "100%" if status.upper() in ("SEALED", "PASS", "COMPLETED") else ("50%" if status.upper() in ("DOING", "RUNNING") else "0%")
+            # Extract decisions from ## 【老板待裁决区】
+            boss_dec_match = re.search(r"##\s*【?老板待裁决(?:区)?】?\s*\n(.*?)(?=\n##|\Z)", st_text, re.DOTALL)
+            if boss_dec_match:
+                lines = [l.strip() for l in boss_dec_match.group(1).split("\n") if l.strip().startswith("-")]
+                for line in lines[:5]:
+                    content = re.sub(r"^-\s*\[.*?\]\s*", "", line).strip()
+                    if content:
+                        d_item = re.split(r"[：:，,。]", content)[0].strip()
+                        decisions.append({
+                            "decision_item": d_item[:40],
+                            "context": content,
+                            "recommendation": "待老板裁决",
+                            "boss_decision": "",
+                            "boss_notes": "",
+                            "decision_time": "",
+                        })
+
+            # Extract decisions from ## D｜当前有效决策
+            valid_dec_match = re.search(r"##\s*(?:D[｜|])?当前有效决策\s*\n(.*?)(?=\n##|\Z)", st_text, re.DOTALL)
+            if valid_dec_match:
+                lines = [l.strip() for l in valid_dec_match.group(1).split("\n") if l.strip().startswith("-")]
+                for line in lines[:5]:
+                    content = re.sub(r"^-\s*\[.*?\]\s*", "", line).strip()
+                    if content:
+                        d_item = re.split(r"[：:，,。]", content)[0].strip()
+                        decisions.append({
+                            "decision_item": d_item[:40],
+                            "context": content,
+                            "recommendation": "已生效执行",
+                            "boss_decision": "已执行",
+                            "boss_notes": "系统已落实",
+                            "decision_time": "",
+                        })
+
+        # Progress percentage & human summary details
+        if status.upper() in ("SEALED", "PASS", "COMPLETED"):
+            progress_pct = "100%"
+            blockers = "无"
+            next_step = "已封板归档 / 日常维护与按需修复"
+        elif status.upper() in ("DOING", "RUNNING"):
+            if total_cbs > 0:
+                progress_pct = f"{int((done_cbs / total_cbs) * 100)}%"
+            else:
+                progress_pct = "50%"
+            blockers = "无"
+            next_step = "继续推进下一阶段"
+        elif status.upper() in ("BLOCKED", "FAIL", "FAILED"):
+            progress_pct = "0%"
+            blockers = "存在卡点阻断"
+            next_step = "定位并消除阻断项"
+        else:
+            progress_pct = "0%"
+            blockers = "无"
+            next_step = "开始执行"
 
         tasks.append({
             "task_id": task_id,
@@ -454,8 +547,8 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
             "progress_pct": progress_pct,
             "owner": owner,
             "summary": summary or f"任务 {task_id} 正在推进",
-            "blockers": "无" if status.upper() != "BLOCKED" else "存在阻断问题待处理",
-            "next_step": "封板归档" if status.upper() in ("SEALED", "PASS") else "继续推进下一步",
+            "blockers": blockers,
+            "next_step": next_step,
             "updated": updated,
         })
 
@@ -474,15 +567,16 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
             "updated": dt.date.today().strftime("%Y-%m-%d"),
         })
 
-    # Default decision items
-    decisions.append({
-        "decision_item": "DEC-001: 治理档位选择 (L0-L3)",
-        "context": "根据任务复杂度确定规划深度与门禁级别",
-        "recommendation": "常规项目推荐 L2 (STANDARD)，高安全要求推荐 L3 (STRICT)",
-        "boss_decision": "",
-        "boss_notes": "",
-        "decision_time": "",
-    })
+    # Default decision items if none extracted
+    if not decisions:
+        decisions.append({
+            "decision_item": "DEC-001: 治理档位选择 (L0-L3)",
+            "context": "根据任务复杂度确定规划深度与门禁级别",
+            "recommendation": "常规项目推荐 L2 (STANDARD)，高安全要求推荐 L3 (STRICT)",
+            "boss_decision": "",
+            "boss_notes": "",
+            "decision_time": "",
+        })
 
     return {
         "tasks": tasks,
@@ -576,7 +670,7 @@ def generate_progress_excel(
         [{"val": f"最近同步：{now_str}", "style": 2}],
         [{"val": "Excel状态：已同步", "style": 2}],
         [{"val": "说明：本表为面向老板的可视化进度视图，不作为正式状态源。", "style": 2}],
-        [], # Blank separator row
+        [],  # Blank separator row
         [{"val": h, "style": 1} for h in PROJECT_OVERVIEW_HEADERS],
     ]
     for t in data["tasks"]:
