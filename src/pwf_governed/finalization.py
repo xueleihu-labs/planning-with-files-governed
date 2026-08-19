@@ -873,6 +873,11 @@ def finalize_plan(
         workflow.validate_checklist_text(final_checklist)
         output["created_files"] = [workflow.CHECKLIST_NAME]
         output["version_incremented"] = True
+        try:
+            from pwf_governed.progress_excel import ensure_required_plan_artifacts
+            ensure_required_plan_artifacts(instance)
+        except Exception:
+            pass
         return output
     except PlanningError as exc:
         return _result_error(exc)

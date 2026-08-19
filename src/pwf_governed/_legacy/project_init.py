@@ -783,8 +783,8 @@ def main(argv: list[str] | None = None) -> int:
             atomic_write(index_path, layout.render_index_links(active_layout, existing=index_path.read_text(encoding="utf-8")))
         record_index_result(root, status, result)
         try:
-            from pwf_governed.progress_excel import generate_progress_excel
-            generate_progress_excel(root)
+            from pwf_governed.progress_excel import ensure_required_plan_artifacts
+            ensure_required_plan_artifacts(root)
         except Exception:
             pass
         print(f"SUCCESS: mode={'new' if args.new else 'adopt'} created={','.join(created) or 'none'}")

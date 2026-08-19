@@ -570,6 +570,11 @@ def create_plan(
         _published_root, _published_instance, published_envelope, published_plan, _published_checklist = _load_instance(instance)
         if contracts.contract_digest(published_envelope) != envelope_digest:
             raise PlanningError("FAILED", "published TaskEnvelope digest changed unexpectedly")
+        try:
+            from pwf_governed.progress_excel import ensure_required_plan_artifacts
+            ensure_required_plan_artifacts(instance)
+        except Exception:
+            pass
         return result
     except PlanningError as exc:
         return _result_error(exc)
