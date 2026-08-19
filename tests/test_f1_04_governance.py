@@ -555,6 +555,15 @@ class F104GovernanceTests(unittest.TestCase):
             self.assertGreaterEqual(len(ordered), 2)
             current_request = ordered[-1]
             historical_request = ordered[0]
+            # Pin event order so this test does not depend on a one-second
+            # timestamp rollover between request creation calls.
+            historical_request["requested_at"] = "2026-07-17T00:00:01Z"
+            current_request["requested_at"] = "2026-07-17T00:00:02Z"
+            requests_dir = instance / "governance" / "requests"
+            for request in (current_request, historical_request):
+                (requests_dir / f"{request['request_id']}.json").write_text(
+                    contracts.stable_json(request), encoding="utf-8"
+                )
             current_receipt = self.make_receipt(current_request, receipt_id="aa-current")
             historical_receipt = self.make_receipt(
                 historical_request,

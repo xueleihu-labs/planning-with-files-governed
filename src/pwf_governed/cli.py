@@ -1,11 +1,12 @@
 """Unified pwf CLI entry point.
 
-Bridges to legacy implementations. Gate 2 will refactor these into proper modules.
+Bridges to legacy implementations and provides progress export and diagnostics.
 """
 from __future__ import annotations
 
 from pathlib import Path
 import argparse
+import os
 import sys
 
 from pwf_governed import __version__
@@ -30,7 +31,6 @@ def _bridge_planning(argv: list[str]) -> int:
 def _bridge_runtime_doctor(argv: list[str]) -> int:
     """Bridge to legacy runtime.py doctor command."""
     from pwf_governed._legacy.runtime import doctor
-    import os
     cwd = Path(os.getcwd())
     try:
         lines = doctor(cwd)
@@ -62,6 +62,39 @@ def _bridge_resume(argv: list[str]) -> int:
     """Bridge to legacy planning.py resume-from-checkpoint."""
     return _bridge_planning(["resume-from-checkpoint"] + argv)
 
+def _progress_dispatch(argv: list[str]) -> int:
+    """Generate or display project progress Excel sheet."""
+    from pwf_governed.progress_excel import generate_progress_excel
+    parser = argparse.ArgumentParser(prog="pwf progress", description="Display or export project progress")
+    parser.add_argument("--excel", action="store_true", help="Generate or refresh human-readable Excel progress sheet")
+    parser.add_argument("--output", "-o", type=str, default=None, help="Output path for progress Excel sheet")
+    args, _ = parser.parse_known_args(argv)
+
+    cwd = Path(os.getcwd())
+    ok, msg = generate_progress_excel(cwd, output_path=args.output)
+    if ok:
+        print(msg)
+        return 0
+    else:
+        print(f"Warning: {msg}", file=sys.stderr)
+        return 1
+
+def _export_excel_dispatch(argv: list[str]) -> int:
+    """Export human-readable project progress Excel sheet."""
+    from pwf_governed.progress_excel import generate_progress_excel
+    parser = argparse.ArgumentParser(prog="pwf export-excel", description="Export project progress Excel sheet")
+    parser.add_argument("--output", "-o", type=str, default=None, help="Output path for progress Excel sheet")
+    args, _ = parser.parse_known_args(argv)
+
+    cwd = Path(os.getcwd())
+    ok, msg = generate_progress_excel(cwd, output_path=args.output)
+    if ok:
+        print(msg)
+        return 0
+    else:
+        print(f"Error: {msg}", file=sys.stderr)
+        return 1
+
 def _dispatch(raw_argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="pwf",
@@ -79,6 +112,13 @@ def _dispatch(raw_argv: list[str]) -> int:
     sub.add_parser("verify", help="Verify a plan summary")
     sub.add_parser("attest", help="Attest a plan with SHA-256")
     sub.add_parser("inject", help="Inject plan context into a hook")
+    
+    prog_sub = sub.add_parser("progress", help="Display or refresh project progress Excel sheet")
+    prog_sub.add_argument("--excel", action="store_true", help="Generate or refresh human-readable Excel progress sheet")
+    prog_sub.add_argument("--output", "-o", type=str, default=None, help="Output path for progress Excel sheet")
+
+    exp_sub = sub.add_parser("export-excel", help="Export human-readable project progress Excel sheet")
+    exp_sub.add_argument("--output", "-o", type=str, default=None, help="Output path for progress Excel sheet")
 
     handlers = {
         "doctor": _bridge_runtime_doctor,
@@ -89,6 +129,8 @@ def _dispatch(raw_argv: list[str]) -> int:
         "verify": _bridge_verify,
         "attest": lambda a: _bridge_planning(["attest-plan"] + a),
         "inject": lambda a: _bridge_planning(["inject-plan"] + a),
+        "progress": _progress_dispatch,
+        "export-excel": _export_excel_dispatch,
     }
 
     if raw_argv and raw_argv[0] in handlers:

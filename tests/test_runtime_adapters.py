@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -10,10 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / "scripts" / "runtime.py"
-RESOLVE_SH = ROOT / "scripts" / "resolve-plan-dir.sh"
-INJECT_SH = ROOT / "scripts" / "inject-plan.sh"
-ATTEST_SH = ROOT / "scripts" / "attest-plan.sh"
-DOCTOR_SH = ROOT / "scripts" / "plan-doctor.sh"
+POSIX_SHELL = shutil.which("sh") or shutil.which("bash")
+POWERSHELL = shutil.which("pwsh") or shutil.which("powershell")
 sys.path.insert(0, str(ROOT / "scripts"))
 import planning_layout as layout  # noqa: E402
 import runtime  # noqa: E402
@@ -38,6 +37,35 @@ class RuntimeAdapterTests(unittest.TestCase):
 
     def run_cli(self, *args: str, env: dict[str, str] | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
         return subprocess.run([sys.executable, str(RUNTIME), *args], cwd=str(cwd or self.root), env=env, text=True, capture_output=True)
+
+    def run_wrapper(
+        self,
+        name: str,
+        *args: str,
+        env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        """Run the native wrapper for the current host platform."""
+
+        if os.name == "nt":
+            if not POWERSHELL:
+                self.skipTest("PowerShell is unavailable on Windows")
+            script = ROOT / "scripts" / f"{name}.ps1"
+            translated: list[str] = []
+            option_names = {"--task-id": "-TaskId", "--context": "-Context", "--show": "-Show", "--clear": "-Clear"}
+            for arg in args:
+                translated.append(option_names.get(arg, arg))
+            return subprocess.run(
+                [POWERSHELL, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script), *translated],
+                cwd=str(self.root),
+                env=env,
+                text=True,
+                capture_output=True,
+            )
+
+        if not POSIX_SHELL:
+            self.skipTest("POSIX shell is unavailable")
+        script = ROOT / "scripts" / f"{name}.sh"
+        return subprocess.run([POSIX_SHELL, str(script), *args], cwd=str(self.root), env=env, text=True, capture_output=True)
 
     def test_canonical_resolution_from_child_and_smart_injection(self) -> None:
         planning = self.root / layout.CANONICAL_DIR_NAME
@@ -130,11 +158,11 @@ class RuntimeAdapterTests(unittest.TestCase):
         env = os.environ.copy()
         env["PLANNING_DISABLED"] = "1"
         before = sorted(path.relative_to(self.root).as_posix() for path in self.root.rglob("*"))
-        for script in (INJECT_SH, DOCTOR_SH):
-            result = subprocess.run(["sh", str(script)], cwd=str(self.root), env=env, text=True, capture_output=True)
+        for script in ("inject-plan", "plan-doctor"):
+            result = self.run_wrapper(script, env=env)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout, "")
-        result = subprocess.run(["sh", str(ROOT / "scripts" / "check-complete.sh")], cwd=str(self.root), env=env, text=True, capture_output=True)
+        result = self.run_wrapper("check-complete", env=env)
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout, "")
         after = sorted(path.relative_to(self.root).as_posix() for path in self.root.rglob("*"))
@@ -143,10 +171,10 @@ class RuntimeAdapterTests(unittest.TestCase):
     def test_shell_resolution_and_attestation_wrappers(self) -> None:
         planning = self.root / layout.CANONICAL_DIR_NAME
         self.write_plan(planning)
-        resolved = subprocess.run(["sh", str(RESOLVE_SH)], cwd=str(self.root), text=True, capture_output=True)
+        resolved = self.run_wrapper("resolve-plan-dir")
         self.assertEqual(resolved.returncode, 0, resolved.stderr)
         self.assertEqual(Path(resolved.stdout.strip()), planning.resolve())
-        attested = subprocess.run(["sh", str(ATTEST_SH)], cwd=str(self.root), text=True, capture_output=True)
+        attested = self.run_wrapper("attest-plan")
         self.assertEqual(attested.returncode, 0, attested.stderr)
         self.assertIn("SHA-256", attested.stdout)
 
@@ -157,36 +185,21 @@ class RuntimeAdapterTests(unittest.TestCase):
         self.write_plan(second)
         layout.write_task_index(self.root, {"task-one": "task-one", "task-two": "task-two"})
 
-        unresolved = subprocess.run(["sh", str(RESOLVE_SH)], cwd=str(self.root), text=True, capture_output=True)
+        unresolved = self.run_wrapper("resolve-plan-dir")
         self.assertEqual(unresolved.returncode, 0)
         self.assertEqual(unresolved.stdout, "")
-        selected = subprocess.run(
-            ["sh", str(RESOLVE_SH), "--task-id", "task-two"],
-            cwd=str(self.root),
-            text=True,
-            capture_output=True,
-        )
+        selected = self.run_wrapper("resolve-plan-dir", "--task-id", "task-two")
         self.assertEqual(selected.returncode, 0, selected.stderr)
         self.assertEqual(Path(selected.stdout.strip()), second.resolve())
-        attested = subprocess.run(
-            ["sh", str(ATTEST_SH), "--task-id", "task-two"],
-            cwd=str(self.root),
-            text=True,
-            capture_output=True,
-        )
+        attested = self.run_wrapper("attest-plan", "--task-id", "task-two")
         self.assertEqual(attested.returncode, 0, attested.stderr)
         self.assertIn("SHA-256", attested.stdout)
-        injected = subprocess.run(
-            ["sh", str(INJECT_SH), "--context", "userprompt", "--task-id", "task-two"],
-            cwd=str(self.root),
-            text=True,
-            capture_output=True,
-        )
+        injected = self.run_wrapper("inject-plan", "--context", "userprompt", "--task-id", "task-two")
         self.assertEqual(injected.returncode, 0, injected.stderr)
         self.assertIn("ACTIVE PLAN", injected.stdout)
 
     def test_doctor_reports_missing_plan_without_failing_hook_loop(self) -> None:
-        result = subprocess.run(["sh", str(DOCTOR_SH)], cwd=str(self.root), text=True, capture_output=True)
+        result = self.run_wrapper("plan-doctor")
         self.assertEqual(result.returncode, 0)
         self.assertIn("no plan", result.stdout)
 
@@ -197,9 +210,10 @@ class RuntimeAdapterTests(unittest.TestCase):
             self.assertIn("TaskId", text)
             self.assertFalse(any("/Users/" in line and "/Users/<" not in line for line in text.splitlines()), "wrapper scripts must not contain personal paths")  # privacy guard: no personal paths
             self.assertFalse(any("E:\\" in line and "<" not in line for line in text.splitlines()), "wrapper scripts must not contain personal Windows paths")
-        for name in ("resolve-plan-dir.sh", "inject-plan.sh", "attest-plan.sh", "plan-doctor.sh"):
-            result = subprocess.run(["sh", "-n", str(ROOT / "scripts" / name)], text=True, capture_output=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
+        if os.name != "nt" and POSIX_SHELL:
+            for name in ("resolve-plan-dir.sh", "inject-plan.sh", "attest-plan.sh", "plan-doctor.sh"):
+                result = subprocess.run([POSIX_SHELL, "-n", str(ROOT / "scripts" / name)], text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

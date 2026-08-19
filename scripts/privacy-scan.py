@@ -51,7 +51,24 @@ _ALLOWED_COMPAT_FILES = {
 
 _MIGRATION_DOC_FILES = {"MIGRATION.md", "CHANGELOG.md"}
 
-_SKIP_DIRS = {".git", "__pycache__", ".pytest_cache"}
+_SKIP_DIRS = {
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".f1-02-unsafe-state",
+    ".cache",
+    "cache",
+    "coverage",
+    "htmlcov",
+    "planning-demo",
+    "planning-test",
+    "planning-files-runtime",
+    "runtime-data",
+    "session-cache",
+    "dist",
+    "build",
+    ".venv",
+}
 
 
 def main() -> int:
