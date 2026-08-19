@@ -127,6 +127,12 @@ def get_status_style(status_str: str) -> int:
     return 0
 
 
+
+def _format_chinese_datetime(d: dt.datetime | None = None) -> str:
+    """Format datetime as YYYY年MM月DD日 HH:MM:SS portably without C runtime strftime encoding issues."""
+    d = d or dt.datetime.now()
+    return f"{d.year}年{d.month:02d}月{d.day:02d}日 {d.hour:02d}:{d.minute:02d}:{d.second:02d}"
+
 def format_status_chinese(status_str: str, evidence: str = "") -> str:
     """Strictly normalize any status text into one of: 已完成 / 进行中 / 待处理 / 已阻塞."""
     s = (status_str or "").strip().upper()
@@ -519,7 +525,7 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
         status = global_status or "TODO"
         phase = "V1"
         now_dt = dt.datetime.now()
-        updated = now_dt.strftime("%Y年%m月%d日 %H:%M:%S")
+        updated = _format_chinese_datetime(now_dt)
 
         st_text = ""
         if status_file.exists():
@@ -721,7 +727,7 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
             "summary": "项目规划与治理地基已建立",
             "blockers": "无",
             "next_step": "制定任务分期与验收标准",
-            "updated": dt.datetime.now().strftime("%Y年%m月%d日 %H:%M:%S"),
+            "updated": _format_chinese_datetime(),
             "overall_status_display": "🔵 正在执行中",
             "pending_future_items": [],
         })
@@ -1022,7 +1028,7 @@ def generate_progress_excel(
 
     # --- Sheet 2: 01_项目总览 (Executive Dashboard) ---
     now_dt = dt.datetime.now()
-    now_str = now_dt.strftime("%Y年%m月%d日 %H:%M:%S")
+    now_str = _format_chinese_datetime(now_dt)
 
     primary_task = data["tasks"][0] if data["tasks"] else {}
     project_name = primary_task.get("task_name", planning_root.name)
