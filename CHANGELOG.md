@@ -5,6 +5,14 @@ All notable changes to planning-with-files-governed are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-rc.3] - 2026-08-19
+
+### Fixed
+
+- Enhanced Markdown planning parser in `progress_excel`: extracted global status from `00_PROJECT_INDEX.md`, automatic task title resolution from Markdown H1 headings, task step extraction from Done Criteria checkboxes (`-[x]`), and automatic decision extraction from `3_status_update.md` into `03_决策与待办`.
+- Updated security policy documentation to reflect supported pre-release line `2.0.0-rc.3`.
+- Ensured consistent version metadata across packaging, documentation, schemas, and tests.
+
 ## [2.0.0-rc.2] - 2026-08-19
 
 ### Added

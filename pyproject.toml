@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "planning-with-files-governed"
-version = "2.0.0rc2"
+version = "2.0.0rc3"
 description = "Governance-oriented, file-based planning and checkpoint system for AI coding agents"
 readme = "README.md"
 license = {text = "MIT"}
