@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from unittest import mock
 
@@ -209,7 +210,10 @@ class F102CreatePlanTests(unittest.TestCase):
             self.assertEqual(invalid_result["error_code"], "INVALID_CONTRACT")
             self.assertFalse(invalid_state.exists())
 
-            unsafe_state = ROOT / ".f1-02-unsafe-state"
+            # Keep this path inside the source tree to exercise the unsafe-root
+            # guard, but make it unique so local runtime artifacts cannot
+            # contaminate the zero-write assertion.
+            unsafe_state = ROOT / f".f1-02-unsafe-state-{uuid.uuid4().hex}"
             unsafe_result = planning.create_plan(
                 self.write_envelope(root, self.envelope(task_id="task-unsafe")),
                 state_root=unsafe_state,

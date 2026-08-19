@@ -812,6 +812,11 @@ def record_checkpoint_ref(
         workflow.validate_checklist_text((instance / workflow.CHECKLIST_NAME).read_text(encoding="utf-8"))
         result["created_files"] = [ref_relative, workflow.CHECKLIST_NAME]
         result["would_write"] = False
+        try:
+            from pwf_governed.progress_excel import generate_progress_excel
+            generate_progress_excel(instance)
+        except Exception:
+            pass
         return result
     except PlanningError as exc:
         return _result_error(exc)

@@ -1,10 +1,10 @@
-# planning-with-files-governed v2.0.0-rc.1
+# planning-with-files-governed v2.0.0-rc.2
 
 A governance-oriented, file-based planning and checkpoint system for AI coding agents — with immutable checkpoints, cross-platform handoff, and L0–L3 governance profiles.
 
 > **Non-official derivative disclaimer:** planning-with-files-governed is an independent, community-maintained derivative of planning-with-files. It is not affiliated with, endorsed by, or maintained by the upstream author.
 
-The Python package version is `2.0.0rc1`; the GitHub release/tag is `v2.0.0-rc.1`. This is a pre-release candidate, not the final `v2.0.0` release.
+The Python package version is `2.0.0rc2`; the GitHub release/tag is `v2.0.0-rc.2`. This is a pre-release candidate, not the final `v2.0.0` release.
 
 ---
 
@@ -120,6 +120,8 @@ python3 -m pytest tests/ -q
 ```
 
 No `pip install` is required. All scripts use the Python standard library only.
+
+On native Windows, use the `.ps1` wrappers in `scripts/` with PowerShell. They validate the selected Python executable and prefer a working `python` or `py` launcher over a broken `python3` alias. The `.sh` wrappers are for macOS, Linux, WSL, or Git Bash environments that provide `sh`/`bash`.
 
 ---
 

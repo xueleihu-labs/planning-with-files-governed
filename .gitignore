@@ -6,6 +6,10 @@ __pycache__/
 .Python
 
 # Test artifacts
+.pytest_cache/
+htmlcov/
+coverage.xml
+.f1-02-unsafe-state/
 planning-demo/
 planning-test/
 *_test_tmp/
@@ -26,3 +30,9 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.venv/
+dist/
+build/
+*.egg-info/
+*.sync-conflict-*
+.playwright-mcp/

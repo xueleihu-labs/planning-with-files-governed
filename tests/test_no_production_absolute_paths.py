@@ -35,7 +35,7 @@ class TestNoProductionAbsolutePaths(unittest.TestCase):
         for path in ROOT.rglob("*"):
             if not path.is_file():
                 continue
-            if any(part in {".git", "__pycache__", ".pytest_cache"} for part in path.parts):
+            if any(part in {".git", "__pycache__", ".pytest_cache", ".f1-02-unsafe-state"} for part in path.parts):
                 continue
             if path.name.startswith("test_") and path.suffix == ".py":
                 continue  # test files contain patterns for scanning, not leaks

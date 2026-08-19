@@ -3,9 +3,18 @@
 [CmdletBinding()]
 param([string]$TaskId = "")
 
-$python = Get-Command python3 -ErrorAction SilentlyContinue
-if (-not $python) { $python = Get-Command python -ErrorAction SilentlyContinue }
-if (-not $python) { $python = Get-Command py -ErrorAction SilentlyContinue }
+function Find-PythonCommand {
+    $names = if ($env:OS -eq "Windows_NT") { @("python", "py", "python3") } else { @("python3", "python", "py") }
+    foreach ($name in $names) {
+        $candidate = Get-Command $name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $candidate) { continue }
+        & $candidate.Source -c "import sys" *> $null
+        if ($LASTEXITCODE -eq 0) { return $candidate }
+    }
+    return $null
+}
+
+$python = Find-PythonCommand
 if (-not $python) { Write-Output "WARN  Python unavailable"; exit 0 }
 $args = @((Join-Path $PSScriptRoot "runtime.py"), "doctor", "--cwd", (Get-Location).Path)
 if ($TaskId -ne "") { $args += @("--task-id", $TaskId) }

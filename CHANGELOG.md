@@ -5,6 +5,26 @@ All notable changes to planning-with-files-governed are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-rc.2] - 2026-08-19
+
+### Added
+
+- Human-readable project progress Excel sheet generator (`pwf progress --excel` and `pwf export-excel`).
+- 4-Sheet architecture:
+  - `00_老板记录` (USER-MANAGED protected sheet for boss notes/reminders, never overwritten).
+  - `01_项目总览` (SYSTEM-MANAGED dashboard with metadata banner, status colors, and human summaries).
+  - `02_阶段与步骤明细` (SYSTEM-MANAGED phase and step breakdown with Done criteria and evidence).
+  - `03_决策与待办` (HYBRID with system decisions and preserved user-managed decision columns).
+- Zero-dependency OpenXML (.xlsx) builder and parser using Python standard library.
+- Fail-closed user data preservation: existing boss records and user columns are 100% preserved across refreshes; corrupted files are preserved without overwrite.
+- Decoupled lifecycle: formal checkpoints succeed independently of auxiliary Excel view refresh.
+
+### Fixed
+
+- Native Windows PowerShell wrappers now probe Python executables and avoid broken `python3` App Execution Aliases.
+- Windows project-init locks now use a native process-existence probe and normalized lock-root comparison, preserving active locks fail-closed.
+- Runtime adapter tests now execute the native PowerShell wrappers on Windows and isolate local runtime artifacts from public-tree scans.
+
 ## [2.0.0-rc.1] - 2026-08-08
 
 ### Added

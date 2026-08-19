@@ -153,16 +153,39 @@ def template_content(name: str, values: dict[str, str]) -> str:
 def pid_exists(pid: int) -> bool:
     if pid <= 0:
         return False
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+            if handle:
+                kernel32.CloseHandle(handle)
+                return True
+            if ctypes.get_last_error() == 5:  # ERROR_ACCESS_DENIED: the process still exists.
+                return True
+        except (AttributeError, OSError):
+            pass
     try:
         os.kill(pid, 0)
+    except PermissionError:
+        # The process exists but cannot be inspected; retain the lock.
+        return True
     except OSError:
         return False
     return True
 
 
+def canonical_lock_root(root: str | Path) -> str:
+    """Normalize lock roots consistently across Windows and POSIX hosts."""
+
+    return os.path.normcase(os.path.realpath(os.path.abspath(os.path.expanduser(str(root)))))
+
+
 class ProjectLock:
     def __init__(self, root: Path, mode: str, agent: str) -> None:
         self.root = root
+        self.root_key = canonical_lock_root(root)
         self.path = root / LOCK_NAME
         self.mode = mode
         self.agent = agent
@@ -173,7 +196,8 @@ class ProjectLock:
             try:
                 old = json.loads(self.path.read_text(encoding="utf-8"))
                 valid = (
-                    old.get("root") == str(self.root.resolve())
+                    isinstance(old.get("root"), str)
+                    and canonical_lock_root(old["root"]) == self.root_key
                     and isinstance(old.get("pid"), int)
                     and pid_exists(old["pid"])
                 )
@@ -189,7 +213,7 @@ class ProjectLock:
             "pid": os.getpid(),
             "mode": self.mode,
             "started_at": timestamp(),
-            "root": str(self.root.resolve()),
+            "root": self.root_key,
         }
         self.path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         self.acquired = True
@@ -758,6 +782,11 @@ def main(argv: list[str] | None = None) -> int:
         if index_path.exists():
             atomic_write(index_path, layout.render_index_links(active_layout, existing=index_path.read_text(encoding="utf-8")))
         record_index_result(root, status, result)
+        try:
+            from pwf_governed.progress_excel import generate_progress_excel
+            generate_progress_excel(root)
+        except Exception:
+            pass
         print(f"SUCCESS: mode={'new' if args.new else 'adopt'} created={','.join(created) or 'none'}")
         if isinstance(edition_result, dict) and "rule_state" in edition_result:
             additions = edition_result.get("additions", [])
