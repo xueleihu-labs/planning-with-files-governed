@@ -1,6 +1,10 @@
 """Human-readable Project Progress Excel generator and preservation engine.
 
-Provides zero-dependency OpenXML (.xlsx) generation, parsing, and safe merging for:
+Provides dual-mode OpenXML (.xlsx) generation, parsing, and safe merging:
+- Primary mode: native `openpyxl` engine (when available) for 100% Microsoft Excel on Windows / Mac compatibility.
+- Fallback mode: zero-dependency pure Python OpenXML builder for minimal / CI environments.
+
+Sheets:
 - 00_老板记录: USER-MANAGED protected sheet (never overwritten/cleared).
 - 01_项目总览: SYSTEM-MANAGED project-level human-readable dashboard with metadata banner.
 - 02_阶段与步骤明细: SYSTEM-MANAGED phase and step breakdown with Done criteria and evidence.
@@ -24,6 +28,15 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+try:
+    import openpyxl
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+    HAS_OPENPYXL = True
+except ImportError:
+    openpyxl = None
+    HAS_OPENPYXL = False
+
 
 EXCEL_FILE_NAME = "项目进度表_人话版.xlsx"
 SHEET_BOSS_LOG = "00_老板记录"
@@ -37,36 +50,27 @@ PHASE_STEPS_HEADERS = ["任务ID", "阶段序号", "步骤/里程碑名称", "�
 DECISION_HEADERS = ["决策项", "背景与影响", "推荐方案", "老板裁决", "老板备注", "裁决时间"]
 
 
-# Styles in styles.xml:
-# 0: Default body cell (thin border, 11pt Calibri)
-# 1: Table Header (Dark Blue #1F4E78, bold white text, thin border)
-# 2: Metadata Banner (Italic #555555 text, no border)
-# 3: Status Green (Pass/Sealed: fill #D4EDDA, bold text #155724, thin border)
-# 4: Status Blue (Doing/Running: fill #CCE5FF, bold text #004085, thin border)
-# 5: Status Yellow (Todo/Pending: fill #FFF3CD, bold text #856404, thin border)
-# 6: Status Red (Blocked/Fail: fill #F8D7DA, bold text #721C24, thin border)
-# 7: Boss Log Header (Teal/Steel Blue #2C3E50, bold white text, thin border)
-
+# --- Fallback Styles XML ---
 STYLES_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="7">
-    <font><sz val="11"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><i/><sz val="10"/><color rgb="FF555555"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FF155724"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FF004085"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FF856404"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FF721C24"/><name val="Calibri"/></font>
+    <font><sz val="11"/><name val="Microsoft YaHei"/><family val="2"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Microsoft YaHei"/><family val="2"/></font>
+    <font><i/><sz val="10"/><color rgb="FF555555"/><name val="Microsoft YaHei"/><family val="2"/></font>
+    <font><b/><sz val="11"/><color rgb="FF155724"/><name val="Microsoft YaHei"/><family val="2"/></font>
+    <font><b/><sz val="11"/><color rgb="FF004085"/><name val="Microsoft YaHei"/><family val="2"/></font>
+    <font><b/><sz val="11"/><color rgb="FF856404"/><name val="Microsoft YaHei"/><family val="2"/></font>
+    <font><b/><sz val="11"/><color rgb="FF721C24"/><name val="Microsoft YaHei"/><family val="2"/></font>
   </fonts>
   <fills count="8">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFD4EDDA"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFCCE5FF"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFF3CD"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF8D7DA"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF2C3E50"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFD4EDDA"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFCCE5FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFF3CD"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF8D7DA"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF2C3E50"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border><left/><right/><top/><bottom/><diagonal/></border>
@@ -75,53 +79,47 @@ STYLES_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <right style="thin"><color rgb="FFD0D7DE"/></right>
       <top style="thin"><color rgb="FFD0D7DE"/></top>
       <bottom style="thin"><color rgb="FFD0D7DE"/></bottom>
+      <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
   </cellStyleXfs>
   <cellXfs count="8">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
-    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyFill="1" applyBorder="0"/>
     <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
     <xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
     <xf numFmtId="0" fontId="5" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
     <xf numFmtId="0" fontId="6" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
     <xf numFmtId="0" fontId="1" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
   </cellXfs>
+  <cellStyles count="1">
+    <cellStyle name="Normal" xfId="0" builtinId="0"/>
+  </cellStyles>
 </styleSheet>"""
 
 
 def get_status_style(status_str: str) -> int:
     """Return matching style index for status strings."""
     s = (status_str or "").strip().upper()
-    if s in ("SEALED", "PASS", "DONE", "COMPLETED", "已封板", "已完成", "通过", "全实现"):
+    if any(k in s for k in ("SEALED", "PASS", "DONE", "COMPLETED", "已封板", "已完成", "通过", "全实现")):
         return 3  # Green
-    if s in ("DOING", "RUNNING", "IN_PROGRESS", "进行中"):
+    if any(k in s for k in ("DOING", "RUNNING", "IN_PROGRESS", "进行中", "执行中")):
         return 4  # Blue
-    if s in ("TODO", "PENDING", "UNSTARTED", "未开始", "待办"):
+    if any(k in s for k in ("TODO", "PENDING", "UNSTARTED", "未开始", "待办", "排队")):
         return 5  # Yellow
-    if s in ("BLOCKED", "FAIL", "FAILED", "ERROR", "已阻断", "阻断", "失败", "卡点"):
+    if any(k in s for k in ("BLOCKED", "FAIL", "FAILED", "ERROR", "已阻断", "阻断", "失败", "卡点", "异常")):
         return 6  # Red
     return 0
 
 
 class OpenXMLWorkbookBuilder:
-    """Zero-dependency OpenXML (.xlsx) builder."""
+    """Zero-dependency OpenXML (.xlsx) builder with full Microsoft Excel on Windows compatibility."""
 
     def __init__(self) -> None:
-        self.shared_strings: list[str] = []
-        self.string_map: dict[str, int] = {}
         self.sheets: list[tuple[str, list[list[Any]], list[float]]] = []
-
-    def _get_string_idx(self, text: str) -> int:
-        if text in self.string_map:
-            return self.string_map[text]
-        idx = len(self.shared_strings)
-        self.shared_strings.append(text)
-        self.string_map[text] = idx
-        return idx
 
     def add_sheet(self, name: str, rows: list[list[Any]], col_widths: list[float] | None = None) -> None:
         self.sheets.append((name, rows, col_widths or []))
@@ -136,6 +134,8 @@ class OpenXMLWorkbookBuilder:
 
     def build_zip_bytes(self) -> bytes:
         buf = io.BytesIO()
+        now_iso = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
             # 1. [Content_Types].xml
             types_xml = [
@@ -143,9 +143,10 @@ class OpenXMLWorkbookBuilder:
                 '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
                 '  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
                 '  <Default Extension="xml" ContentType="application/xml"/>',
+                '  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>',
+                '  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>',
                 '  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
                 '  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>',
-                '  <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStringTable+xml"/>',
             ]
             for idx in range(1, len(self.sheets) + 1):
                 types_xml.append(f'  <Override PartName="/xl/worksheets/sheet{idx}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>')
@@ -157,11 +158,47 @@ class OpenXMLWorkbookBuilder:
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
                 '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>\n'
+                '  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>\n'
+                '  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>\n'
                 '</Relationships>'
             )
             zf.writestr("_rels/.rels", rels_xml.encode("utf-8"))
 
-            # 3. xl/_rels/workbook.xml.rels
+            # 3. docProps/core.xml
+            core_xml = (
+                f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+                f'<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
+                f'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" '
+                f'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n'
+                f'  <dc:title>项目进度表_人话版</dc:title>\n'
+                f'  <dc:creator>Planning-with-Files</dc:creator>\n'
+                f'  <cp:lastModifiedBy>Planning-with-Files</cp:lastModifiedBy>\n'
+                f'  <dcterms:created xsi:type="dcterms:W3CDTF">{now_iso}</dcterms:created>\n'
+                f'  <dcterms:modified xsi:type="dcterms:W3CDTF">{now_iso}</dcterms:modified>\n'
+                f'</cp:coreProperties>'
+            )
+            zf.writestr("docProps/core.xml", core_xml.encode("utf-8"))
+
+            # 4. docProps/app.xml
+            sheet_names_xml = "".join(f"<vt:lpstr>{s[0]}</vt:lpstr>" for s in self.sheets)
+            app_xml = (
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+                '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">\n'
+                '  <Application>Microsoft Excel</Application>\n'
+                '  <DocSecurity>0</DocSecurity>\n'
+                '  <ScaleCrop>false</ScaleCrop>\n'
+                f'  <HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Worksheets</vt:lpstr></vt:variant><vt:variant><vt:i4>{len(self.sheets)}</vt:i4></vt:variant></vt:vector></HeadingPairs>\n'
+                f'  <TitlesOfParts><vt:vector size="{len(self.sheets)}" baseType="lpstr">{sheet_names_xml}</vt:vector></TitlesOfParts>\n'
+                '  <Company></Company>\n'
+                '  <LinksUpToDate>false</LinksUpToDate>\n'
+                '  <SharedDoc>false</SharedDoc>\n'
+                '  <HyperlinksChanged>false</HyperlinksChanged>\n'
+                '  <AppVersion>16.0300</AppVersion>\n'
+                '</Properties>'
+            )
+            zf.writestr("docProps/app.xml", app_xml.encode("utf-8"))
+
+            # 5. xl/_rels/workbook.xml.rels
             wb_rels = [
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
@@ -169,161 +206,258 @@ class OpenXMLWorkbookBuilder:
             for idx in range(1, len(self.sheets) + 1):
                 wb_rels.append(f'  <Relationship Id="rId{idx}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet{idx}.xml"/>')
             styles_rid = len(self.sheets) + 1
-            strings_rid = len(self.sheets) + 2
             wb_rels.append(f'  <Relationship Id="rId{styles_rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>')
-            wb_rels.append(f'  <Relationship Id="rId{strings_rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>')
             wb_rels.append('</Relationships>')
             zf.writestr("xl/_rels/workbook.xml.rels", "\n".join(wb_rels).encode("utf-8"))
 
-            # 4. xl/workbook.xml
+            # 6. xl/workbook.xml
             wb_xml = [
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
                 '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+                '  <workbookPr/>',
                 '  <sheets>',
             ]
             for idx, (name, _, _) in enumerate(self.sheets, start=1):
                 clean_name = name.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
                 wb_xml.append(f'    <sheet name="{clean_name}" sheetId="{idx}" r:id="rId{idx}"/>')
             wb_xml.append('  </sheets>')
+            wb_xml.append('  <calcPr calcId="124519" fullCalcOnLoad="1"/>')
             wb_xml.append('</workbook>')
             zf.writestr("xl/workbook.xml", "\n".join(wb_xml).encode("utf-8"))
 
-            # 5. Worksheets
-            sheet_xmls = []
+            # 7. Worksheets
             for sheet_idx, (name, rows, col_widths) in enumerate(self.sheets, start=1):
+                max_row = max(1, len(rows))
+                max_col = max(1, max((len(r) for r in rows), default=1))
+                dim_ref = f"A1:{self._col_letter(max_col)}{max_row}"
+
                 ws_xml = [
                     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
                     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+                    f'  <dimension ref="{dim_ref}"/>',
+                    '  <sheetViews><sheetView workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews>',
+                    '  <sheetFormatPr defaultRowHeight="15"/>',
                 ]
                 if col_widths:
                     ws_xml.append('  <cols>')
-                    for col_i, w in enumerate(col_widths, start=1):
-                        ws_xml.append(f'    <col min="{col_i}" max="{col_i}" width="{w}" customWidth="1"/>')
+                    for col_i, width in enumerate(col_widths, start=1):
+                        ws_xml.append(f'    <col min="{col_i}" max="{col_i}" width="{width}" customWidth="1"/>')
                     ws_xml.append('  </cols>')
                 ws_xml.append('  <sheetData>')
                 for row_idx, row_cells in enumerate(rows, start=1):
                     if not row_cells:
-                        # Empty row
                         ws_xml.append(f'    <row r="{row_idx}"/>')
                         continue
                     ws_xml.append(f'    <row r="{row_idx}">')
                     for col_idx, cell_data in enumerate(row_cells, start=1):
-                        c_ref = self._col_letter(col_idx) + str(row_idx)
-                        style_idx = 0
+                        c_ref = f"{self._col_letter(col_idx)}{row_idx}"
                         cell_val = cell_data
+                        style_idx = 0
                         if isinstance(cell_data, dict):
                             cell_val = cell_data.get("val", "")
                             style_idx = cell_data.get("style", 0)
 
                         str_val = str(cell_val) if cell_val is not None else ""
-                        s_idx = self._get_string_idx(str_val)
+                        escaped_val = (
+                            str_val.replace("&", "&amp;")
+                            .replace("<", "&lt;")
+                            .replace(">", "&gt;")
+                        )
+                        escaped_val = "".join(ch for ch in escaped_val if ord(ch) >= 32 or ch in "\t\n\r")
+
                         if style_idx > 0:
-                            ws_xml.append(f'      <c r="{c_ref}" t="s" s="{style_idx}"><v>{s_idx}</v></c>')
+                            ws_xml.append(f'      <c r="{c_ref}" t="inlineStr" s="{style_idx}"><is><t>{escaped_val}</t></is></c>')
                         else:
-                            ws_xml.append(f'      <c r="{c_ref}" t="s"><v>{s_idx}</v></c>')
+                            ws_xml.append(f'      <c r="{c_ref}" t="inlineStr"><is><t>{escaped_val}</t></is></c>')
                     ws_xml.append('    </row>')
                 ws_xml.append('  </sheetData>')
+                ws_xml.append('  <pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>')
                 ws_xml.append('</worksheet>')
-                sheet_xmls.append((f"xl/worksheets/sheet{sheet_idx}.xml", "\n".join(ws_xml).encode("utf-8")))
+                zf.writestr(f"xl/worksheets/sheet{sheet_idx}.xml", "\n".join(ws_xml).encode("utf-8"))
 
-            for path, data in sheet_xmls:
-                zf.writestr(path, data)
-
-            # 6. xl/sharedStrings.xml
-            sst_xml = [
-                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-                f'<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="{len(self.shared_strings)}" uniqueCount="{len(self.shared_strings)}">',
-            ]
-            for s in self.shared_strings:
-                escaped = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                sst_xml.append(f'  <si><t xml:space="preserve">{escaped}</t></si>')
-            sst_xml.append('</sst>')
-            zf.writestr("xl/sharedStrings.xml", "\n".join(sst_xml).encode("utf-8"))
-
-            # 7. xl/styles.xml
+            # 8. xl/styles.xml
             zf.writestr("xl/styles.xml", STYLES_XML.encode("utf-8"))
 
         return buf.getvalue()
 
 
+def build_workbook_openpyxl(sheets_data: list[tuple[str, list[list[Any]], list[float]]]) -> bytes:
+    """Build spreadsheet using openpyxl for 100% native Microsoft Excel on Windows fidelity."""
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+
+    font_header = Font(name="Microsoft YaHei", size=11, bold=True, color="FFFFFF")
+    font_boss_header = Font(name="Microsoft YaHei", size=11, bold=True, color="FFFFFF")
+    font_body = Font(name="Microsoft YaHei", size=10)
+    font_meta = Font(name="Microsoft YaHei", size=10, italic=True, color="555555")
+
+    fill_header = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    fill_boss = PatternFill(start_color="2C3E50", end_color="2C3E50", fill_type="solid")
+
+    status_styles = {
+        "SEALED": (Font(name="Microsoft YaHei", size=10, bold=True, color="155724"), PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")),
+        "PASS": (Font(name="Microsoft YaHei", size=10, bold=True, color="155724"), PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")),
+        "DOING": (Font(name="Microsoft YaHei", size=10, bold=True, color="004085"), PatternFill(start_color="CCE5FF", end_color="CCE5FF", fill_type="solid")),
+        "TODO": (Font(name="Microsoft YaHei", size=10, bold=True, color="856404"), PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")),
+        "BLOCKED": (Font(name="Microsoft YaHei", size=10, bold=True, color="721C24"), PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type="solid")),
+    }
+
+    thin_border = Border(
+        left=Side(style="thin", color="D0D7DE"),
+        right=Side(style="thin", color="D0D7DE"),
+        top=Side(style="thin", color="D0D7DE"),
+        bottom=Side(style="thin", color="D0D7DE"),
+    )
+
+    for title, rows, col_widths in sheets_data:
+        ws = wb.create_sheet(title=title)
+        ws.views.sheetView[0].showGridLines = True
+
+        is_boss_sheet = (title == SHEET_BOSS_LOG)
+        is_overview_sheet = (title == SHEET_PROJECT_OVERVIEW)
+
+        for r_idx, row in enumerate(rows, start=1):
+            if not row:
+                continue
+            is_header_row = (is_boss_sheet and r_idx == 1) or (is_overview_sheet and r_idx == 6) or (not is_boss_sheet and not is_overview_sheet and r_idx == 1)
+            is_meta_row = is_overview_sheet and (1 <= r_idx <= 4)
+
+            for c_idx, cell_data in enumerate(row, start=1):
+                cell_val = cell_data
+                style_override = None
+                if isinstance(cell_data, dict):
+                    cell_val = cell_data.get("val", "")
+                    style_override = cell_data.get("style", None)
+
+                c = ws.cell(row=r_idx, column=c_idx, value=cell_val)
+                c.font = font_body
+                c.border = thin_border
+                c.alignment = Alignment(vertical="center")
+
+                if is_meta_row:
+                    c.font = font_meta
+                    c.border = Border()
+                elif is_header_row:
+                    c.font = font_boss_header if is_boss_sheet else font_header
+                    c.fill = fill_boss if is_boss_sheet else fill_header
+                    c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                elif style_override in (3, 4, 5, 6):
+                    key = {3: "PASS", 4: "DOING", 5: "TODO", 6: "BLOCKED"}.get(style_override)
+                    if key and key in status_styles:
+                        c.font, c.fill = status_styles[key]
+                        c.alignment = Alignment(horizontal="center", vertical="center")
+
+        for c_idx, width in enumerate(col_widths, start=1):
+            ws.column_dimensions[get_column_letter(c_idx)].width = width
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def parse_existing_xlsx(xlsx_path: Path | str) -> dict[str, list[list[str]]]:
-    """Parse existing .xlsx file using standard library.
-    
-    Returns a dict of sheet_name -> list of rows (each row is list of str).
-    Raises Exception if file is invalid or corrupt.
-    """
+    """Parse existing .xlsx file using openpyxl (if available) or standard library."""
     xlsx_path = Path(xlsx_path)
     if not xlsx_path.exists():
         return {}
 
+    if HAS_OPENPYXL:
+        try:
+            wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+            sheets_data: dict[str, list[list[str]]] = {}
+            for name in wb.sheetnames:
+                ws = wb[name]
+                rows: list[list[str]] = []
+                for r in ws.iter_rows(values_only=True):
+                    row_vals = [str(v) if v is not None else "" for v in r]
+                    if name == SHEET_DECISIONS and len(row_vals) < len(DECISION_HEADERS):
+                        row_vals.extend([""] * (len(DECISION_HEADERS) - len(row_vals)))
+                    elif name == SHEET_BOSS_LOG and len(row_vals) < len(BOSS_LOG_HEADERS):
+                        row_vals.extend([""] * (len(BOSS_LOG_HEADERS) - len(row_vals)))
+                    rows.append(row_vals)
+                sheets_data[name] = rows
+            return sheets_data
+        except Exception:
+            # Fallback to standard library parser if openpyxl fails on legacy/malformed files
+            pass
+
     with zipfile.ZipFile(xlsx_path, "r") as zf:
-        # Read shared strings
         shared_strings: list[str] = []
         if "xl/sharedStrings.xml" in zf.namelist():
             tree = ET.fromstring(zf.read("xl/sharedStrings.xml"))
             ns = {"ns": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
-            for si in tree.findall("ns:si", ns):
+            for si in tree.findall(".//ns:si", ns):
                 text_parts = [t.text or "" for t in si.findall(".//ns:t", ns)]
                 shared_strings.append("".join(text_parts))
 
-        # Read workbook.xml and rels
         wb_tree = ET.fromstring(zf.read("xl/workbook.xml"))
         ns = {
             "ns": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
             "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
         }
-        
+
         wb_rels_tree = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
         rel_ns = {"rel": "http://schemas.openxmlformats.org/package/2006/relationships"}
         rel_map = {}
         for rel in wb_rels_tree.findall("rel:Relationship", rel_ns):
             rel_map[rel.attrib["Id"]] = rel.attrib["Target"]
 
-        sheets_data: dict[str, list[list[str]]] = {}
+        sheets_data = {}
         for sheet in wb_tree.findall(".//ns:sheet", ns):
             name = sheet.attrib["name"]
-            rid = sheet.attrib["{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"]
+            rid = sheet.attrib.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id", "")
+            if not rid and "r:id" in sheet.attrib:
+                rid = sheet.attrib["r:id"]
             target = rel_map.get(rid, "")
             if not target:
                 continue
             if not target.startswith("xl/"):
-                target = "xl/" + target.lstrip("/")
+                target = f"xl/{target.lstrip('/')}"
             if target not in zf.namelist():
                 continue
 
             ws_tree = ET.fromstring(zf.read(target))
-            rows: list[list[str]] = []
+            rows = []
             for row_el in ws_tree.findall(".//ns:row", ns):
                 row_dict: dict[int, str] = {}
                 for c_el in row_el.findall("ns:c", ns):
-                    r_ref = c_el.attrib.get("r", "")
-                    col_match = re.match(r"([A-Z]+)(\d+)", r_ref)
-                    if not col_match:
+                    r_attr = c_el.attrib.get("r", "")
+                    col_letters = "".join(filter(str.isalpha, r_attr))
+                    if not col_letters:
                         continue
-                    col_str, _ = col_match.groups()
                     col_idx = 0
-                    for ch in col_str:
-                        col_idx = col_idx * 26 + (ord(ch) - ord("A") + 1)
-                    col_idx -= 1
+                    for char in col_letters:
+                        col_idx = col_idx * 26 + (ord(char.upper()) - 64)
 
                     t_attr = c_el.attrib.get("t", "")
-                    v_el = c_el.find("ns:v", ns)
                     val = ""
-                    if t_attr == "s" and v_el is not None and v_el.text:
-                        s_idx = int(v_el.text)
-                        if 0 <= s_idx < len(shared_strings):
-                            val = shared_strings[s_idx]
+                    if t_attr == "s":
+                        v_el = c_el.find("ns:v", ns)
+                        if v_el is not None and v_el.text:
+                            try:
+                                s_idx = int(v_el.text)
+                                if 0 <= s_idx < len(shared_strings):
+                                    val = shared_strings[s_idx]
+                            except ValueError:
+                                pass
                     elif t_attr == "inlineStr":
                         t_el = c_el.find(".//ns:t", ns)
-                        val = t_el.text if t_el is not None else ""
-                    elif v_el is not None and v_el.text:
-                        val = v_el.text
+                        if t_el is not None and t_el.text:
+                            val = t_el.text
+                    else:
+                        v_el = c_el.find("ns:v", ns)
+                        if v_el is not None and v_el.text:
+                            val = v_el.text
 
                     row_dict[col_idx] = val
 
                 if row_dict:
-                    max_col = max(row_dict.keys())
-                    row_list = [row_dict.get(c, "") for c in range(max_col + 1)]
+                    max_c = max(row_dict.keys())
+                    row_list = [row_dict.get(c_i, "") for c_i in range(1, max_c + 1)]
+                    if name == SHEET_DECISIONS and len(row_list) < len(DECISION_HEADERS):
+                        row_list.extend([""] * (len(DECISION_HEADERS) - len(row_list)))
+                    elif name == SHEET_BOSS_LOG and len(row_list) < len(BOSS_LOG_HEADERS):
+                        row_list.extend([""] * (len(BOSS_LOG_HEADERS) - len(row_list)))
                     rows.append(row_list)
                 else:
                     rows.append([])
@@ -370,6 +504,8 @@ def extract_project_data(planning_root: Path) -> dict[str, Any]:
     # Check project-level index for global status
     global_status = ""
     index_file = planning_root / "00_PROJECT_INDEX.md"
+    if not index_file.exists() and planning_root.parent:
+        index_file = planning_root.parent / "00_PROJECT_INDEX.md"
     if index_file.exists():
         idx_text = index_file.read_text(encoding="utf-8", errors="ignore")
         if "TASK_STATUS=COMPLETE" in idx_text or "SYSTEM_STATUS=EFFECTIVE" in idx_text:
@@ -590,10 +726,10 @@ def generate_progress_excel(
     output_path: Path | str | None = None,
 ) -> tuple[bool, str]:
     """Generate or update the human-readable project progress Excel sheet.
-    
+
     Safely preserves USER-MANAGED sheet 00_老板记录 and user columns in 03_决策与待办.
     Follows fail-closed: never corrupts or overwrites original file on parsing failure.
-    
+
     Returns:
         (True, "EXCEL_REFRESH_SUCCESS: <path>") or (False, "EXCEL_REFRESH_FAILED_PRESERVED: <reason>")
     """
@@ -618,7 +754,7 @@ def generate_progress_excel(
             # Extract 00_老板记录 (all rows)
             if SHEET_BOSS_LOG in old_sheets:
                 preserved_boss_rows = old_sheets[SHEET_BOSS_LOG]
-            
+
             # Extract 03_决策与待办 user columns
             if SHEET_DECISIONS in old_sheets:
                 d_rows = old_sheets[SHEET_DECISIONS]
@@ -645,9 +781,7 @@ def generate_progress_excel(
     except Exception as exc:
         return (False, f"EXCEL_REFRESH_FAILED_PRESERVED: failed to extract project markdown data: {exc}")
 
-    # 3. Build sheets
-    builder = OpenXMLWorkbookBuilder()
-
+    # 3. Build sheet rows
     # --- Sheet 1: 00_老板记录 ---
     boss_sheet_rows: list[list[Any]] = []
     if preserved_boss_rows:
@@ -660,8 +794,6 @@ def generate_progress_excel(
     else:
         # Create empty template
         boss_sheet_rows.append([{"val": h, "style": 7} for h in BOSS_LOG_HEADERS])
-
-    builder.add_sheet(SHEET_BOSS_LOG, boss_sheet_rows, [15, 12, 40, 35, 10, 12])
 
     # --- Sheet 2: 01_项目总览 ---
     now_str = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -687,7 +819,6 @@ def generate_progress_excel(
             t["next_step"],
             t["updated"],
         ])
-    builder.add_sheet(SHEET_PROJECT_OVERVIEW, overview_rows, [22, 28, 14, 12, 10, 15, 38, 18, 22, 14])
 
     # --- Sheet 3: 02_阶段与步骤明细 ---
     step_rows: list[list[Any]] = [
@@ -704,7 +835,6 @@ def generate_progress_excel(
             s["evidence_ref"],
             s["notes"],
         ])
-    builder.add_sheet(SHEET_PHASE_STEPS, step_rows, [20, 12, 35, 12, 30, 25, 20])
 
     # --- Sheet 4: 03_决策与待办 ---
     dec_rows: list[list[Any]] = [
@@ -726,13 +856,26 @@ def generate_progress_excel(
             boss_notes,
             dec_time,
         ])
-    builder.add_sheet(SHEET_DECISIONS, dec_rows, [30, 35, 35, 18, 25, 15])
+
+    sheets_to_build = [
+        (SHEET_BOSS_LOG, boss_sheet_rows, [15, 12, 40, 35, 10, 12]),
+        (SHEET_PROJECT_OVERVIEW, overview_rows, [22, 28, 14, 12, 10, 15, 38, 18, 22, 14]),
+        (SHEET_PHASE_STEPS, step_rows, [20, 12, 35, 12, 30, 25, 20]),
+        (SHEET_DECISIONS, dec_rows, [30, 35, 35, 18, 25, 15]),
+    ]
 
     # 4. Generate byte stream and write atomically via temp file
     try:
-        xlsx_bytes = builder.build_zip_bytes()
+        if HAS_OPENPYXL:
+            xlsx_bytes = build_workbook_openpyxl(sheets_to_build)
+        else:
+            builder = OpenXMLWorkbookBuilder()
+            for s_name, s_rows, s_widths in sheets_to_build:
+                builder.add_sheet(s_name, s_rows, s_widths)
+            xlsx_bytes = builder.build_zip_bytes()
+
         target_file.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with tempfile.NamedTemporaryFile(dir=target_file.parent, delete=False, suffix=".tmp") as tf:
             tf.write(xlsx_bytes)
             temp_path = Path(tf.name)
@@ -743,4 +886,4 @@ def generate_progress_excel(
     except Exception as exc:
         if "temp_path" in locals() and temp_path.exists():
             temp_path.unlink(missing_ok=True)
-        return (False, f"EXCEL_REFRESH_FAILED_PRESERVED: atomic write failed: {exc}")
+        return (False, f"EXCEL_REFRESH_FAILED_PRESERVED: failed to generate or write excel: {exc}")
