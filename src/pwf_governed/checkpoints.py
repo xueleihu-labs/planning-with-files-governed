@@ -813,8 +813,8 @@ def record_checkpoint_ref(
         result["created_files"] = [ref_relative, workflow.CHECKLIST_NAME]
         result["would_write"] = False
         try:
-            from pwf_governed.progress_excel import generate_progress_excel
-            generate_progress_excel(instance)
+            from pwf_governed.progress_excel import ensure_required_plan_artifacts
+            ensure_required_plan_artifacts(instance)
         except Exception:
             pass
         return result
@@ -964,6 +964,11 @@ def resume_from_checkpoint(
         workflow.validate_checklist_text((instance / workflow.CHECKLIST_NAME).read_text(encoding="utf-8"))
         result["created_files"] = [resume_relative, workflow.CHECKLIST_NAME]
         result["would_write"] = False
+        try:
+            from pwf_governed.progress_excel import ensure_required_plan_artifacts
+            ensure_required_plan_artifacts(instance)
+        except Exception:
+            pass
         return result
     except PlanningError as exc:
         return _result_error(exc)

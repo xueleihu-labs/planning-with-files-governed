@@ -33,6 +33,12 @@ def verify_plan_summary(instance_root: str | Path) -> dict[str, Any]:
         state_root, instance, envelope, plan, checklist = _load_instance(instance_root)
         assessment = _finalization_assessment(state_root, instance, envelope, plan, checklist)
         metadata = workflow.extract_machine_json(checklist, "workflow")
+        excel_check = {}
+        try:
+            from pwf_governed.progress_excel import validate_required_plan_artifacts
+            excel_check = validate_required_plan_artifacts(instance)
+        except Exception:
+            pass
         return {
             "result": "SUMMARY",
             "task_id": envelope["task_id"],
@@ -49,8 +55,16 @@ def verify_plan_summary(instance_root: str | Path) -> dict[str, Any]:
             "midcourse_gate_effective_result": assessment["midcourse_gate_effective_result"],
             "midcourse_gate_source": assessment["midcourse_gate_source"],
             "required_next_action": assessment["required_next_action"],
+            "required_excel_exists": excel_check.get("REQUIRED_EXCEL_EXISTS", False),
+            "required_excel_valid": excel_check.get("REQUIRED_EXCEL_VALID", False),
         }
     except PlanningError as exc:
+        excel_check = {}
+        try:
+            from pwf_governed.progress_excel import validate_required_plan_artifacts
+            excel_check = validate_required_plan_artifacts(instance_root)
+        except Exception:
+            pass
         return {
             "result": "SUMMARY",
             "task_id": Path(instance_root).expanduser().name,
@@ -64,8 +78,16 @@ def verify_plan_summary(instance_root: str | Path) -> dict[str, Any]:
             "warnings": [],
             "trusted_checkpoint": None,
             "required_next_action": "REPAIR_BLOCKING_EVIDENCE",
+            "required_excel_exists": excel_check.get("REQUIRED_EXCEL_EXISTS", False),
+            "required_excel_valid": excel_check.get("REQUIRED_EXCEL_VALID", False),
         }
     except (OSError, ValueError, workflow.ContractError) as exc:
+        excel_check = {}
+        try:
+            from pwf_governed.progress_excel import validate_required_plan_artifacts
+            excel_check = validate_required_plan_artifacts(instance_root)
+        except Exception:
+            pass
         return {
             "result": "SUMMARY",
             "task_id": Path(instance_root).expanduser().name,
@@ -79,4 +101,6 @@ def verify_plan_summary(instance_root: str | Path) -> dict[str, Any]:
             "warnings": [],
             "trusted_checkpoint": None,
             "required_next_action": "REPAIR_BLOCKING_EVIDENCE",
+            "required_excel_exists": excel_check.get("REQUIRED_EXCEL_EXISTS", False),
+            "required_excel_valid": excel_check.get("REQUIRED_EXCEL_VALID", False),
         }

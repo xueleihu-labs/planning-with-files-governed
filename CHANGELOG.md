@@ -5,6 +5,19 @@ All notable changes to planning-with-files-governed are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-rc.4] - 2026-08-20
+
+### Added
+
+- Canonical Project Progress Excel contract: `<PROJECT_ROOT>/项目进度表_人话版.xlsx` established as standard REQUIRED artifact across all formal PLAN lifecycles.
+- Transactional migration with 5-gate equivalence checks (`CANONICAL_EXCEL_VALID`, `BOSS_LOG_DATA_EQUIVALENT`, `BOSS_DECISION_DATA_EQUIVALENT`, `FOUR_SHEETS_COMPLETE`, `RELATIONSHIPS_VALID`) from legacy `00.项目规划与治理/` paths.
+- Deep `validate_required_plan_artifacts()` integrity checks validating OpenXML ZIP structure, relationships, all 4 canonical sheets, and `00_老板记录` parseability.
+- Native OpenXML Freeze Panes, `A1:F1000` AutoFilter, 3 Data Validation dropdowns on `00_老板记录`, and `A1:H{max}` AutoFilter on `02_阶段与步骤明细`.
+- Executive Dashboard on `01_项目总览` with consistency gates preventing false 100% completion when active steps remain.
+- Latest-effective-state wins deduplication on `03_决策与待办`, separating Active from Historical decisions by stable `decision_key`.
+- Read-only diagnostics in `doctor` and `verify_plan_summary` without file mutation.
+- Automatic creation and refresh during formal lifecycle mutation entrypoints (`init`, `create_plan`, `record_checkpoint_ref`, `resume_from_checkpoint`, `finalize_plan`).
+
 ## [2.0.0-rc.3] - 2026-08-19
 
 ### Fixed

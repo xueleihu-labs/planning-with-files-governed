@@ -495,6 +495,20 @@ def doctor(start: Path | None = None, *, planning_dir: str | Path | None = None,
         # Repository mode: check wrapper scripts in scripts/ dir
         for name in ("resolve-plan-dir.sh", "resolve-plan-dir.ps1", "inject-plan.sh", "inject-plan.ps1", "attest-plan.sh", "attest-plan.ps1"):
             lines.append(f"PASS  install surface: {name}" if (repo_scripts / name).is_file() else f"FAIL  install surface: {name} missing")
+    try:
+        from pwf_governed.progress_excel import validate_required_plan_artifacts
+        check_root = plan.project_root if plan else (start or Path.cwd())
+        excel_check = validate_required_plan_artifacts(check_root)
+        if excel_check["REQUIRED_EXCEL_EXISTS"]:
+            lines.append(f"PASS  required-excel: exists ({excel_check['excel_path']})")
+            if excel_check["REQUIRED_EXCEL_VALID"]:
+                lines.append("PASS  required-excel-valid: valid OpenXML")
+            else:
+                lines.append(f"FAIL  required-excel-valid: {excel_check['details']}")
+        else:
+            lines.append("WARN  required-excel: missing canonical progress Excel (run 'pwf progress --excel')")
+    except Exception:
+        pass
     lines.append("info  Windows/WSL behavior: STATIC_VALIDATION_ONLY (no real host in this run)")
     lines.append("=== plan-doctor done ===")
     return lines
